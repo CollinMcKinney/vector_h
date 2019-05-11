@@ -127,7 +127,7 @@ static inline vec2 vec2_add_scalar(vec2 augend, float addend)
 	return sum;
 }
 
-// Per-component subtraction of vec.
+// Per-component subtraction of vec2.
 static inline vec2 vec2_sub(vec2 minuend, vec2 subtrahend)
 {
 	vec2 difference;
@@ -228,8 +228,8 @@ static inline vec2 vec2_rsqrt(vec2 radicand)
 static inline vec2 vec2_abs(vec2 src0)
 {
 	vec2 rets;
-	rets.x = fabs(src0.x);
-	rets.y = fabs(src0.y);
+	rets.x = fabsf(src0.x);
+	rets.y = fabsf(src0.y);
 	return rets;
 }
 
@@ -362,6 +362,7 @@ static inline vec2 vec2_coth(vec2 theta)
 	return hyperbolic_cotangent;
 }
 
+
 // True if *all* components are non-zero.
 static inline size_t vec2_all(vec2 src0)
 {
@@ -445,8 +446,8 @@ static inline float vec2_angle(vec2 src0, vec2 src1)
 static inline vec2 vec2_degrees(vec2 radians)
 {
 	vec2 degrees;
-	degrees.x = radians.x * 57.29577951308232157827; // multiply by 180/pi.
-	degrees.y = radians.y * 57.29577951308232157827; // multiply by 180/pi.
+	degrees.x = (float)(radians.x * 57.29577951308232157827); // multiply by 180/pi.
+	degrees.y = (float)(radians.y * 57.29577951308232157827); // multiply by 180/pi.
 	return degrees;
 }
 
@@ -454,8 +455,8 @@ static inline vec2 vec2_degrees(vec2 radians)
 static inline vec2 vec2_radians(vec2 degrees)
 {
 	vec2 radians;
-	radians.x = degrees.x * 0.01745329251994329556; // multiply by pi/180.
-	radians.y = degrees.y * 0.01745329251994329556; // multiply by pi/180.
+	radians.x = (float)(degrees.x * 0.01745329251994329556); // multiply by pi/180.
+	radians.y = (float)(degrees.y * 0.01745329251994329556); // multiply by pi/180.
 	return radians;
 }
 
@@ -505,8 +506,8 @@ static inline vec2 vec2_frac(vec2 src0)
 static inline vec2 vec2_max(vec2 src0, vec2 src1)
 {
 	vec2 maximum;
-	maximum.x = fmax(src0.x, src1.x);
-	maximum.y = fmax(src0.y, src1.y);
+	maximum.x = fmaxf(src0.x, src1.x);
+	maximum.y = fmaxf(src0.y, src1.y);
 	return maximum;
 }
 
@@ -514,8 +515,8 @@ static inline vec2 vec2_max(vec2 src0, vec2 src1)
 static inline vec2 vec2_max_scalar(vec2 src0, float src1)
 {
 	vec2 maximum;
-	maximum.x = fmax(src0.x, src1);
-	maximum.y = fmax(src0.y, src1);
+	maximum.x = fmaxf(src0.x, src1);
+	maximum.y = fmaxf(src0.y, src1);
 	return maximum;
 }
 
@@ -523,8 +524,8 @@ static inline vec2 vec2_max_scalar(vec2 src0, float src1)
 static inline vec2 vec2_min(vec2 src0, vec2 src1)
 {
 	vec2 minimum;
-	minimum.x = fmin(src0.x, src1.x);
-	minimum.y = fmin(src0.y, src1.y);
+	minimum.x = fminf(src0.x, src1.x);
+	minimum.y = fminf(src0.y, src1.y);
 	return minimum;
 }
 
@@ -532,8 +533,8 @@ static inline vec2 vec2_min(vec2 src0, vec2 src1)
 static inline vec2 vec2_min_scalar(vec2 src0, float src1)
 {
 	vec2 minimum;
-	minimum.x = fmin(src0.x, src1);
-	minimum.y = fmin(src0.y, src1);
+	minimum.x = fminf(src0.x, src1);
+	minimum.y = fminf(src0.y, src1);
 	return minimum;
 }
 
@@ -735,9 +736,9 @@ static inline vec3 vec3_rsqrt(vec3 radicand)
 static inline vec3 vec3_abs(vec3 src0)
 {
 	vec3 rets;
-	rets.x = fabs(src0.x);
-	rets.y = fabs(src0.y);
-	rets.z = fabs(src0.z);
+	rets.x = fabsf(src0.x);
+	rets.y = fabsf(src0.y);
+	rets.z = fabsf(src0.z);
 	return rets;
 }
 
@@ -965,9 +966,9 @@ static inline float vec3_angle(vec3 src0, vec3 src1)
 static inline vec3 vec3_degrees(vec3 radians)
 {
 	vec3 degrees;
-	degrees.x = radians.x * 57.29577951308232157827; // multiply by 180/pi.
-	degrees.y = radians.y * 57.29577951308232157827; // multiply by 180/pi.
-	degrees.z = radians.z * 57.29577951308232157827; // multiply by 180/pi.
+	degrees.x = (float)(radians.x * 57.29577951308232157827); // multiply by 180/pi.
+	degrees.y = (float)(radians.y * 57.29577951308232157827); // multiply by 180/pi.
+	degrees.z = (float)(radians.z * 57.29577951308232157827); // multiply by 180/pi.
 	return degrees;
 }
 
@@ -975,9 +976,9 @@ static inline vec3 vec3_degrees(vec3 radians)
 static inline vec3 vec3_radians(vec3 degrees)
 {
 	vec3 radians;
-	radians.x = degrees.x * 0.01745329251994329556; // multiply by pi/180.
-	radians.y = degrees.y * 0.01745329251994329556; // multiply by pi/180.
-	radians.z = degrees.z * 0.01745329251994329556; // multiply by pi/180.
+	radians.x = (float)(degrees.x * 0.01745329251994329556); // multiply by pi/180.
+	radians.y = (float)(degrees.y * 0.01745329251994329556); // multiply by pi/180.
+	radians.z = (float)(degrees.z * 0.01745329251994329556); // multiply by pi/180.
 	return radians;
 }
 
@@ -1035,9 +1036,9 @@ static inline vec3 vec3_frac(vec3 src0)
 static inline vec3 vec3_max(vec3 src0, vec3 src1)
 {
 	vec3 maximum;
-	maximum.x = fmax(src0.x, src1.x);
-	maximum.y = fmax(src0.y, src1.y);
-	maximum.z = fmax(src0.z, src1.z);
+	maximum.x = fmaxf(src0.x, src1.x);
+	maximum.y = fmaxf(src0.y, src1.y);
+	maximum.z = fmaxf(src0.z, src1.z);
 	return maximum;
 }
 
@@ -1045,9 +1046,9 @@ static inline vec3 vec3_max(vec3 src0, vec3 src1)
 static inline vec3 vec3_max_scalar(vec3 src0, float src1)
 {
 	vec3 maximum;
-	maximum.x = fmax(src0.x, src1);
-	maximum.y = fmax(src0.y, src1);
-	maximum.z = fmax(src0.z, src1);
+	maximum.x = fmaxf(src0.x, src1);
+	maximum.y = fmaxf(src0.y, src1);
+	maximum.z = fmaxf(src0.z, src1);
 	return maximum;
 }
 
@@ -1055,9 +1056,9 @@ static inline vec3 vec3_max_scalar(vec3 src0, float src1)
 static inline vec3 vec3_min(vec3 src0, vec3 src1)
 {
 	vec3 minimum;
-	minimum.x = fmin(src0.x, src1.x);
-	minimum.y = fmin(src0.y, src1.y);
-	minimum.z = fmin(src0.z, src1.z);
+	minimum.x = fminf(src0.x, src1.x);
+	minimum.y = fminf(src0.y, src1.y);
+	minimum.z = fminf(src0.z, src1.z);
 	return minimum;
 }
 
@@ -1065,9 +1066,9 @@ static inline vec3 vec3_min(vec3 src0, vec3 src1)
 static inline vec3 vec3_min_scalar(vec3 src0, float src1)
 {
 	vec3 minimum;
-	minimum.x = fmin(src0.x, src1);
-	minimum.y = fmin(src0.y, src1);
-	minimum.z = fmin(src0.z, src1);
+	minimum.x = fminf(src0.x, src1);
+	minimum.y = fminf(src0.y, src1);
+	minimum.z = fminf(src0.z, src1);
 	return minimum;
 }
 
@@ -1086,7 +1087,6 @@ static inline vec3 vec3_clamp_scalar(vec3 src0, float minimum, float maximum)
 	vec3 clamped		= vec3_min_scalar(clamped_lower, maximum);
 	return clamped;
 }
-
 #pragma endregion
 
 #pragma region Vec4 Functions
@@ -1286,10 +1286,10 @@ static inline vec4 vec4_rsqrt(vec4 radicand)
 static inline vec4 vec4_abs(vec4 src0)
 {
 	vec4 rets;
-	rets.x = fabs(src0.x);
-	rets.y = fabs(src0.y);
-	rets.z = fabs(src0.z);
-	rets.w = fabs(src0.w);
+	rets.x = fabsf(src0.x);
+	rets.y = fabsf(src0.y);
+	rets.z = fabsf(src0.z);
+	rets.w = fabsf(src0.w);
 	return rets;
 }
 
@@ -1465,7 +1465,7 @@ static inline size_t vec4_any(vec4 src0)
 // Four-component dot product.
 static inline float vec4_dot(vec4 src0, vec4 src1)
 {
-	float dot_product;
+	float dot_product = 0.0f;
 	dot_product += (src0.x * src1.x);
 	dot_product += (src0.y * src1.y);
 	dot_product += (src0.z * src1.z);
@@ -1530,10 +1530,10 @@ static inline float vec4_angle(vec4 src0, vec4 src1)
 static inline vec4 vec4_degrees(vec4 radians)
 {
 	vec4 degrees;
-	degrees.x = radians.x * 57.29577951308232157827; // multiply by 180/pi.
-	degrees.y = radians.y * 57.29577951308232157827; // multiply by 180/pi.
-	degrees.z = radians.z * 57.29577951308232157827; // multiply by 180/pi.
-	degrees.w = radians.w * 57.29577951308232157827; // multiply by 180/pi.
+	degrees.x = (float)(radians.x * 57.29577951308232157827); // multiply by 180/pi.
+	degrees.y = (float)(radians.y * 57.29577951308232157827); // multiply by 180/pi.
+	degrees.z = (float)(radians.z * 57.29577951308232157827); // multiply by 180/pi.
+	degrees.w = (float)(radians.w * 57.29577951308232157827); // multiply by 180/pi.
 	return degrees;
 }
 
@@ -1541,10 +1541,10 @@ static inline vec4 vec4_degrees(vec4 radians)
 static inline vec4 vec4_radians(vec4 degrees)
 {
 	vec4 radians;
-	radians.x = degrees.x * 0.01745329251994329556; // multiply by pi/180.
-	radians.y = degrees.y * 0.01745329251994329556; // multiply by pi/180.
-	radians.z = degrees.z * 0.01745329251994329556; // multiply by pi/180.
-	radians.w = degrees.w * 0.01745329251994329556; // multiply by pi/180.
+	radians.x = (float)(degrees.x * 0.01745329251994329556); // multiply by pi/180.
+	radians.y = (float)(degrees.y * 0.01745329251994329556); // multiply by pi/180.
+	radians.z = (float)(degrees.z * 0.01745329251994329556); // multiply by pi/180.
+	radians.w = (float)(degrees.w * 0.01745329251994329556); // multiply by pi/180.
 	return radians;
 }
 
@@ -1607,10 +1607,10 @@ static inline vec4 vec4_frac(vec4 src0)
 static inline vec4 vec4_max(vec4 src0, vec4 src1)
 {
 	vec4 maximum;
-	maximum.x = fmax(src0.x, src1.x);
-	maximum.y = fmax(src0.y, src1.y);
-	maximum.z = fmax(src0.z, src1.z);
-	maximum.w = fmax(src0.w, src1.w);
+	maximum.x = fmaxf(src0.x, src1.x);
+	maximum.y = fmaxf(src0.y, src1.y);
+	maximum.z = fmaxf(src0.z, src1.z);
+	maximum.w = fmaxf(src0.w, src1.w);
 	return maximum;
 }
 
@@ -1618,10 +1618,10 @@ static inline vec4 vec4_max(vec4 src0, vec4 src1)
 static inline vec4 vec4_max_scalar(vec4 src0, float src1)
 {
 	vec4 maximum;
-	maximum.x = fmax(src0.x, src1);
-	maximum.y = fmax(src0.y, src1);
-	maximum.z = fmax(src0.z, src1);
-	maximum.w = fmax(src0.w, src1);
+	maximum.x = fmaxf(src0.x, src1);
+	maximum.y = fmaxf(src0.y, src1);
+	maximum.z = fmaxf(src0.z, src1);
+	maximum.w = fmaxf(src0.w, src1);
 	return maximum;
 }
 
@@ -1629,10 +1629,10 @@ static inline vec4 vec4_max_scalar(vec4 src0, float src1)
 static inline vec4 vec4_min(vec4 src0, vec4 src1)
 {
 	vec4 minimum;
-	minimum.x = fmin(src0.x, src1.x);
-	minimum.y = fmin(src0.y, src1.y);
-	minimum.z = fmin(src0.z, src1.z);
-	minimum.w = fmin(src0.w, src1.w);
+	minimum.x = fminf(src0.x, src1.x);
+	minimum.y = fminf(src0.y, src1.y);
+	minimum.z = fminf(src0.z, src1.z);
+	minimum.w = fminf(src0.w, src1.w);
 	return minimum;
 }
 
@@ -1640,10 +1640,10 @@ static inline vec4 vec4_min(vec4 src0, vec4 src1)
 static inline vec4 vec4_min_scalar(vec4 src0, float src1)
 {
 	vec4 minimum;
-	minimum.x = fmin(src0.x, src1);
-	minimum.y = fmin(src0.y, src1);
-	minimum.z = fmin(src0.z, src1);
-	minimum.w = fmin(src0.w, src1);
+	minimum.x = fminf(src0.x, src1);
+	minimum.y = fminf(src0.y, src1);
+	minimum.z = fminf(src0.z, src1);
+	minimum.w = fminf(src0.w, src1);
 	return minimum;
 }
 
@@ -1673,7 +1673,197 @@ static inline vec4 vec4_invert_color(vec4 color)
 	inverted_color.a = color.a;
 	return inverted_color;
 }
+#pragma endregion
 
+#pragma region Test Functions
+static inline void vec2_test_all()
+{
+	vec2 a = vec2_init_from_1(1.0f);
+	vec2 b = vec2_init_from_2(1.0f, 1.0f);
+	vec2 c = vec2_swizzle(a, X, Y);
+
+	a = vec2_mask(a, b, MASK_XY);
+	a = vec2_negate(a);
+	a = vec2_add(a, b);
+	a = vec2_add_scalar(a, 1.0f);
+	a = vec2_sub(a, b);
+	a = vec2_sub_scalar(a, 1.0f);
+	a = vec2_mul(a, b);
+	a = vec2_mul_scalar(a, 1.0f);
+	a = vec2_div(a, b);
+	a = vec2_div_scalar(a, 1.0f);
+	a = vec2_pow(a, b);
+	a = vec2_pow_scalar(a, 1.0f);
+	a = vec2_sqrt(a);
+	a = vec2_rcp(a);
+	a = vec2_rsqrt(a);
+	a = vec2_abs(a);
+	a = vec2_sin(a);
+	a = vec2_cos(a);
+	a = vec2_tan(a);
+	a = vec2_asin(a);
+	a = vec2_acos(a);
+	a = vec2_atan(a);
+	a = vec2_csc(a);
+	a = vec2_sec(a);
+	a = vec2_cot(a);
+	a = vec2_sinh(a);
+	a = vec2_cosh(a);
+	a = vec2_tanh(a);
+	a = vec2_csch(a);
+	a = vec2_sech(a);
+	a = vec2_coth(a);
+
+	size_t	v = vec2_all(a);
+	v = vec2_any(a);
+
+	float	f = vec2_dot(a, b);
+
+	a = vec2_reflect(a, b);
+	f = vec2_magnitude(a);
+	a = vec2_normalize(a);
+	f = vec2_distance(a, b);
+	f = vec2_angle(a, b);
+	a = vec2_degrees(a);
+	a = vec2_radians(a);
+	f = vec2_perp(a, b);
+	a = vec2_floor(a);
+	a = vec2_ceil(a);
+	a = vec2_trunc(a);
+	a = vec2_frac(a);
+	a = vec2_max(a, b);
+	a = vec2_max_scalar(a, 1.0f);
+	a = vec2_min(a, b);
+	a = vec2_min_scalar(a, 1.0f);
+	a = vec2_clamp(a, b, c);
+	a = vec2_clamp_scalar(a, 1.0f, 1.0f);
+}
+
+static inline void vec3_test_all()
+{
+	vec3 a = vec3_init_from_1(1.0f);
+	vec3 b = vec3_init_from_3(1.0f, 1.0f, 1.0f);
+	vec3 c = vec3_swizzle(a, X, Y, Z);
+
+	a = vec3_mask(a, b, MASK_XY);
+	a = vec3_negate(a);
+	a = vec3_add(a, b);
+	a = vec3_add_scalar(a, 1.0f);
+	a = vec3_sub(a, b);
+	a = vec3_sub_scalar(a, 1.0f);
+	a = vec3_mul(a, b);
+	a = vec3_mul_scalar(a, 1.0f);
+	a = vec3_div(a, b);
+	a = vec3_div_scalar(a, 1.0f);
+	a = vec3_pow(a, b);
+	a = vec3_pow_scalar(a, 1.0f);
+	a = vec3_sqrt(a);
+	a = vec3_rcp(a);
+	a = vec3_rsqrt(a);
+	a = vec3_abs(a);
+	a = vec3_sin(a);
+	a = vec3_cos(a);
+	a = vec3_tan(a);
+	a = vec3_asin(a);
+	a = vec3_acos(a);
+	a = vec3_atan(a);
+	a = vec3_csc(a);
+	a = vec3_sec(a);
+	a = vec3_cot(a);
+	a = vec3_sinh(a);
+	a = vec3_cosh(a);
+	a = vec3_tanh(a);
+	a = vec3_csch(a);
+	a = vec3_sech(a);
+	a = vec3_coth(a);
+
+	size_t	v = vec3_all(a);
+	v = vec3_any(a);
+
+	float	f = vec3_dot(a, b);
+
+	a = vec3_reflect(a, b);
+	f = vec3_magnitude(a);
+	a = vec3_normalize(a);
+	f = vec3_distance(a, b);
+	f = vec3_angle(a, b);
+	a = vec3_degrees(a);
+	a = vec3_radians(a);
+	a = vec3_cross(a, b);
+	a = vec3_floor(a);
+	a = vec3_ceil(a);
+	a = vec3_trunc(a);
+	a = vec3_frac(a);
+	a = vec3_max(a, b);
+	a = vec3_max_scalar(a, 1.0f);
+	a = vec3_min(a, b);
+	a = vec3_min_scalar(a, 1.0f);
+	a = vec3_clamp(a, b, c);
+	a = vec3_clamp_scalar(a, 1.0f, 1.0f);
+}
+
+static inline void vec4_test_all()
+{
+	vec4 a = vec4_init_from_1(1.0f);
+	vec4 b = vec4_init_from_4(1.0f, 1.0f, 1.0f, 1.0f);
+	vec4 c = vec4_swizzle(a, X, Y, Z, W);
+
+	a = vec4_mask(a, b, MASK_XY);
+	a = vec4_negate(a);
+	a = vec4_add(a, b);
+	a = vec4_add_scalar(a, 1.0f);
+	a = vec4_sub(a, b);
+	a = vec4_sub_scalar(a, 1.0f);
+	a = vec4_mul(a, b);
+	a = vec4_mul_scalar(a, 1.0f);
+	a = vec4_div(a, b);
+	a = vec4_div_scalar(a, 1.0f);
+	a = vec4_pow(a, b);
+	a = vec4_pow_scalar(a, 1.0f);
+	a = vec4_sqrt(a);
+	a = vec4_rcp(a);
+	a = vec4_rsqrt(a);
+	a = vec4_abs(a);
+	a = vec4_sin(a);
+	a = vec4_cos(a);
+	a = vec4_tan(a);
+	a = vec4_asin(a);
+	a = vec4_acos(a);
+	a = vec4_atan(a);
+	a = vec4_csc(a);
+	a = vec4_sec(a);
+	a = vec4_cot(a);
+	a = vec4_sinh(a);
+	a = vec4_cosh(a);
+	a = vec4_tanh(a);
+	a = vec4_csch(a);
+	a = vec4_sech(a);
+	a = vec4_coth(a);
+
+	size_t	v = vec4_all(a);
+	v = vec4_any(a);
+
+	float	f = vec4_dot(a, b);
+
+	a = vec4_reflect(a, b);
+	f = vec4_magnitude(a);
+	a = vec4_normalize(a);
+	f = vec4_distance(a, b);
+	f = vec4_angle(a, b);
+	a = vec4_degrees(a);
+	a = vec4_radians(a);
+	a = vec4_cross(a, b);
+	a = vec4_floor(a);
+	a = vec4_ceil(a);
+	a = vec4_trunc(a);
+	a = vec4_frac(a);
+	a = vec4_max(a, b);
+	a = vec4_max_scalar(a, 1.0f);
+	a = vec4_min(a, b);
+	a = vec4_min_scalar(a, 1.0f);
+	a = vec4_clamp(a, b, c);
+	a = vec4_clamp_scalar(a, 1.0f, 1.0f);
+}
 #pragma endregion
 
 #endif /* VECTORS_H */
