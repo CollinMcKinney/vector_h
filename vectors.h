@@ -3,27 +3,30 @@
 
 #include <math.h>
 
-#pragma region Component Masks
-#define X (0)
-#define Y (1)
-#define Z (2)
-#define W (3)
+typedef __UINTPTR_TYPE__ mask_t;
+static_assert(sizeof(mask_t) == __SIZEOF_POINTER__, "");
 
-#define MASK_X		(1 << X)
-#define MASK_Y		(1 << Y)
-#define MASK_Z		(1 << Z)
-#define MASK_W		(1 << W)
-#define MASK_XY		( MASK_X | MASK_Y )
-#define MASK_XZ		( MASK_X | MASK_Z )
-#define MASK_XW		( MASK_X | MASK_W )
-#define MASK_YZ		( MASK_Y | MASK_Z )
-#define MASK_YW		( MASK_Y | MASK_W )
-#define MASK_ZW		( MASK_Z | MASK_W )
-#define MASK_XYZ	( MASK_X | MASK_Y | MASK_Z )
-#define MASK_XYW	( MASK_X | MASK_Y | MASK_W )
-#define MASK_XZW	( MASK_X | MASK_Z | MASK_W )
-#define MASK_YZW	( MASK_Y | MASK_Z | MASK_W )
-#define MASK_XYZW	( MASK_X | MASK_Y | MASK_Z | MASK_W )
+#pragma region Component Masks
+#define X (mask_t)(0)
+#define Y (mask_t)(1)
+#define Z (mask_t)(2)
+#define W (mask_t)(3)
+
+#define MASK_X		(mask_t)(1 << X)
+#define MASK_Y		(mask_t)(1 << Y)
+#define MASK_Z		(mask_t)(1 << Z)
+#define MASK_W		(mask_t)(1 << W)
+#define MASK_XY		(mask_t)( MASK_X | MASK_Y )
+#define MASK_XZ		(mask_t)( MASK_X | MASK_Z )
+#define MASK_XW		(mask_t)( MASK_X | MASK_W )
+#define MASK_YZ		(mask_t)( MASK_Y | MASK_Z )
+#define MASK_YW		(mask_t)( MASK_Y | MASK_W )
+#define MASK_ZW		(mask_t)( MASK_Z | MASK_W )
+#define MASK_XYZ	(mask_t)( MASK_X | MASK_Y | MASK_Z )
+#define MASK_XYW	(mask_t)( MASK_X | MASK_Y | MASK_W )
+#define MASK_XZW	(mask_t)( MASK_X | MASK_Z | MASK_W )
+#define MASK_YZW	(mask_t)( MASK_Y | MASK_Z | MASK_W )
+#define MASK_XYZW	(mask_t)( MASK_X | MASK_Y | MASK_Z | MASK_W )
 #pragma endregion
 
 #pragma region Vector Typedefs
@@ -65,7 +68,7 @@ static_assert(sizeof(vec4) == 0x10, "");
 #pragma region Vec2 Functions
 
 // Swizzle (swap) the order of components
-static inline vec2 vec2_swizzle(vec2 src0, size_t a, size_t b)
+static inline vec2 vec2_swizzle(vec2 src0, mask_t a, mask_t b)
 {
 	vec2 swizzled;
 	swizzled.x = src0.components[a & 0x1];
@@ -74,7 +77,7 @@ static inline vec2 vec2_swizzle(vec2 src0, size_t a, size_t b)
 }
 
 // Selects components from src0 if the corresponding bit in the mask is set, otherwise selects from src1.
-static inline vec2 vec2_mask(vec2 src0, vec2 src1, size_t mask)
+static inline vec2 vec2_mask(vec2 src0, vec2 src1, mask_t mask)
 {
 	vec2 masked;
 	masked.x = mask & MASK_X ? src0.x : src1.x;
@@ -364,18 +367,18 @@ static inline vec2 vec2_coth(vec2 theta)
 
 
 // True if *all* components are non-zero.
-static inline size_t vec2_all(vec2 src0)
+static inline bool vec2_all(vec2 src0)
 {
-	size_t rets = (
+	bool rets = (
 		(src0.x != 0) &&
 		(src0.y != 0));
 	return rets;
 }
 
 // True if *any* components are non-zero.
-static inline size_t vec2_any(vec2 src0)
+static inline bool vec2_any(vec2 src0)
 {
-	size_t rets = (
+	bool rets = (
 		(src0.x != 0) ||
 		(src0.y != 0));
 	return rets;
@@ -557,7 +560,7 @@ static inline vec2 vec2_clamp_scalar(vec2 src0, float minimum, float maximum)
 
 #pragma region Vec3 Functions
 // Swizzle (swap) the order of components.
-static inline vec3 vec3_swizzle(vec3 src0, size_t a, size_t b, size_t c)
+static inline vec3 vec3_swizzle(vec3 src0, mask_t a, mask_t b, mask_t c)
 {
 	vec3 swizzled;
 	swizzled.x = src0.components[a >= 3 ? 0 : a];
@@ -567,7 +570,7 @@ static inline vec3 vec3_swizzle(vec3 src0, size_t a, size_t b, size_t c)
 }
 
 // Selects components from src0 if the corresponding bit in the mask is set, otherwise selects from src1.
-static inline vec3 vec3_mask(vec3 src0, vec3 src1, size_t mask)
+static inline vec3 vec3_mask(vec3 src0, vec3 src1, mask_t mask)
 {
 	vec3 masked;
 	masked.x = mask & MASK_X ? src0.x : src1.x;
@@ -881,9 +884,9 @@ static inline vec3 vec3_coth(vec3 theta)
 }
 
 // True if *all* components are non-zero.
-static inline size_t vec3_all(vec3 src0)
+static inline bool vec3_all(vec3 src0)
 {
-	size_t rets = (
+	bool rets = (
 		(src0.x != 0) &&
 		(src0.y != 0) &&
 		(src0.z != 0));
@@ -891,9 +894,9 @@ static inline size_t vec3_all(vec3 src0)
 }
 
 // True if *any* components are non-zero.
-static inline size_t vec3_any(vec3 src0)
+static inline bool vec3_any(vec3 src0)
 {
-	size_t rets = (
+	bool rets = (
 		(src0.x != 0) ||
 		(src0.y != 0) ||
 		(src0.z != 0));
@@ -1091,7 +1094,7 @@ static inline vec3 vec3_clamp_scalar(vec3 src0, float minimum, float maximum)
 
 #pragma region Vec4 Functions
 // Swizzle (swap) the order of components.
-static inline vec4 vec4_swizzle(vec4 src0, size_t a, size_t b, size_t c, size_t d)
+static inline vec4 vec4_swizzle(vec4 src0, mask_t a, mask_t b, mask_t c, mask_t d)
 {
 	vec4 swizzled;
 	swizzled.x = src0.components[a & 0x3];
@@ -1102,7 +1105,7 @@ static inline vec4 vec4_swizzle(vec4 src0, size_t a, size_t b, size_t c, size_t 
 }
 
 // Selects components from src0 if the corresponding bit in the mask is set, otherwise selects from src1.
-static inline vec4 vec4_mask(vec4 src0, vec4 src1, size_t mask)
+static inline vec4 vec4_mask(vec4 src0, vec4 src1, mask_t mask)
 {
 	vec4 masked;
 	masked.x = mask & MASK_X ? src0.x : src1.x;
@@ -1441,9 +1444,9 @@ static inline vec4 vec4_coth(vec4 theta)
 }
 
 // True if *all* components are non-zero.
-static inline size_t vec4_all(vec4 src0)
+static inline bool vec4_all(vec4 src0)
 {
-	size_t rets = (
+	bool rets = (
 		(src0.x != 0) &&
 		(src0.y != 0) &&
 		(src0.z != 0) &&
@@ -1452,9 +1455,9 @@ static inline size_t vec4_all(vec4 src0)
 }
 
 // True if *any* components are non-zero.
-static inline size_t vec4_any(vec4 src0)
+static inline bool vec4_any(vec4 src0)
 {
-	size_t rets = (
+	bool rets = (
 		(src0.x != 0) ||
 		(src0.y != 0) ||
 		(src0.z != 0) ||
@@ -1714,7 +1717,7 @@ static inline void vec2_test_all()
 	a = vec2_sech(a);
 	a = vec2_coth(a);
 
-	size_t	v = vec2_all(a);
+	bool	v = vec2_all(a);
 	v = vec2_any(a);
 
 	float	f = vec2_dot(a, b);
@@ -1777,7 +1780,7 @@ static inline void vec3_test_all()
 	a = vec3_sech(a);
 	a = vec3_coth(a);
 
-	size_t	v = vec3_all(a);
+	bool	v = vec3_all(a);
 	v = vec3_any(a);
 
 	float	f = vec3_dot(a, b);
@@ -1840,7 +1843,7 @@ static inline void vec4_test_all()
 	a = vec4_sech(a);
 	a = vec4_coth(a);
 
-	size_t	v = vec4_all(a);
+	bool	v = vec4_all(a);
 	v = vec4_any(a);
 
 	float	f = vec4_dot(a, b);
