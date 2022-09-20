@@ -3,10 +3,10 @@
 
 #include <math.h>
 
+#pragma region Component Masks
 typedef __UINTPTR_TYPE__ mask_t;
 static_assert(sizeof(mask_t) == __SIZEOF_POINTER__, "");
 
-#pragma region Component Masks
 #define X (mask_t)(0)
 #define Y (mask_t)(1)
 #define Z (mask_t)(2)
