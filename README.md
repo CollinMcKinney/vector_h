@@ -1,2 +1,4 @@
 # vector_h
-(Graphics oriented) single header vector math library written in C (it also #includes "math.h" for trig-functions.)
+(Graphics oriented) 
+
+Single header vector math library written in C (it does #include "math.h" for trig and other optimized functions.)
