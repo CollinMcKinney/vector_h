@@ -4,7 +4,8 @@
 #include <math.h>
 
 #pragma region Component Masks
-typedef __UINTPTR_TYPE__ mask_t;
+// Used for addressing components of a vec2, vec3, or vec4
+typedef size_t mask_t;
 static_assert(sizeof(mask_t) == __SIZEOF_POINTER__, "");
 
 #define X (mask_t)(0)
