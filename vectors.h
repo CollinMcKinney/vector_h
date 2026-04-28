@@ -4,6 +4,12 @@
 #include <math.h>
 #include <stdint.h>
 
+#pragma region Math Constants
+#define VECTORS_PI      3.14159265358979323846f
+static const float VECTORS_RAD2DEG = 180.0f / VECTORS_PI;
+static const float VECTORS_DEG2RAD = VECTORS_PI / 180.0f;
+#pragma endregion
+
 #pragma region Component Masks
 // Used for addressing components of a vec2, vec3, or vec4
 typedef uint32_t mask_t;
@@ -514,8 +520,8 @@ static inline float vec2_angle(vec2 src0, vec2 src1)
 static inline vec2 vec2_degrees(vec2 radians)
 {
 	vec2 degrees;
-	degrees.x = (float)(radians.x * 57.29577951308232157827); // multiply by 180/pi.
-	degrees.y = (float)(radians.y * 57.29577951308232157827); // multiply by 180/pi.
+	degrees.x = radians.x * VECTORS_RAD2DEG;
+	degrees.y = radians.y * VECTORS_RAD2DEG;
 	return degrees;
 }
 
@@ -523,8 +529,8 @@ static inline vec2 vec2_degrees(vec2 radians)
 static inline vec2 vec2_radians(vec2 degrees)
 {
 	vec2 radians;
-	radians.x = (float)(degrees.x * 0.01745329251994329556); // multiply by pi/180.
-	radians.y = (float)(degrees.y * 0.01745329251994329556); // multiply by pi/180.
+	radians.x = degrees.x * VECTORS_DEG2RAD;
+	radians.y = degrees.y * VECTORS_DEG2RAD;
 	return radians;
 }
 
@@ -1034,9 +1040,9 @@ static inline float vec3_angle(vec3 src0, vec3 src1)
 static inline vec3 vec3_degrees(vec3 radians)
 {
 	vec3 degrees;
-	degrees.x = (float)(radians.x * 57.29577951308232157827); // multiply by 180/pi.
-	degrees.y = (float)(radians.y * 57.29577951308232157827); // multiply by 180/pi.
-	degrees.z = (float)(radians.z * 57.29577951308232157827); // multiply by 180/pi.
+	degrees.x = radians.x * VECTORS_RAD2DEG;
+	degrees.y = radians.y * VECTORS_RAD2DEG;
+	degrees.z = radians.z * VECTORS_RAD2DEG;
 	return degrees;
 }
 
@@ -1044,9 +1050,9 @@ static inline vec3 vec3_degrees(vec3 radians)
 static inline vec3 vec3_radians(vec3 degrees)
 {
 	vec3 radians;
-	radians.x = (float)(degrees.x * 0.01745329251994329556); // multiply by pi/180.
-	radians.y = (float)(degrees.y * 0.01745329251994329556); // multiply by pi/180.
-	radians.z = (float)(degrees.z * 0.01745329251994329556); // multiply by pi/180.
+	radians.x = degrees.x * VECTORS_DEG2RAD;
+	radians.y = degrees.y * VECTORS_DEG2RAD;
+	radians.z = degrees.z * VECTORS_DEG2RAD;
 	return radians;
 }
 
@@ -1598,10 +1604,10 @@ static inline float vec4_angle(vec4 src0, vec4 src1)
 static inline vec4 vec4_degrees(vec4 radians)
 {
 	vec4 degrees;
-	degrees.x = (float)(radians.x * 57.29577951308232157827); // multiply by 180/pi.
-	degrees.y = (float)(radians.y * 57.29577951308232157827); // multiply by 180/pi.
-	degrees.z = (float)(radians.z * 57.29577951308232157827); // multiply by 180/pi.
-	degrees.w = (float)(radians.w * 57.29577951308232157827); // multiply by 180/pi.
+	degrees.x = radians.x * VECTORS_RAD2DEG;
+	degrees.y = radians.y * VECTORS_RAD2DEG;
+	degrees.z = radians.z * VECTORS_RAD2DEG;
+	degrees.w = radians.w * VECTORS_RAD2DEG;
 	return degrees;
 }
 
@@ -1609,10 +1615,10 @@ static inline vec4 vec4_degrees(vec4 radians)
 static inline vec4 vec4_radians(vec4 degrees)
 {
 	vec4 radians;
-	radians.x = (float)(degrees.x * 0.01745329251994329556); // multiply by pi/180.
-	radians.y = (float)(degrees.y * 0.01745329251994329556); // multiply by pi/180.
-	radians.z = (float)(degrees.z * 0.01745329251994329556); // multiply by pi/180.
-	radians.w = (float)(degrees.w * 0.01745329251994329556); // multiply by pi/180.
+	radians.x = degrees.x * VECTORS_DEG2RAD;
+	radians.y = degrees.y * VECTORS_DEG2RAD;
+	radians.z = degrees.z * VECTORS_DEG2RAD;
+	radians.w = degrees.w * VECTORS_DEG2RAD;
 	return radians;
 }
 
