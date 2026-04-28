@@ -2,11 +2,11 @@
 #define VECTORS_H
 
 #include <math.h>
+#include <stdint.h>
 
 #pragma region Component Masks
 // Used for addressing components of a vec2, vec3, or vec4
-typedef size_t mask_t;
-static_assert(sizeof(mask_t) == sizeof(void*), "");
+typedef uint32_t mask_t;
 
 #define X (mask_t)(0)
 #define Y (mask_t)(1)
