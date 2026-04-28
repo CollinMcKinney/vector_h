@@ -28,6 +28,28 @@ static_assert(sizeof(mask_t) == sizeof(void*), "");
 #define MASK_XZW	(mask_t)( MASK_X | MASK_Z | MASK_W )
 #define MASK_YZW	(mask_t)( MASK_Y | MASK_Z | MASK_W )
 #define MASK_XYZW	(mask_t)( MASK_X | MASK_Y | MASK_Z | MASK_W )
+
+#define I X
+#define J Y
+#define K Z
+//#define W W
+
+#define MASK_I		MASK_X	
+#define MASK_J		MASK_Y	
+#define MASK_K		MASK_Z	
+//#define MASK_W		MASK_W	
+#define MASK_IJ		MASK_XY	
+#define MASK_IK		MASK_XZ	
+#define MASK_IW		MASK_XW	
+#define MASK_JK		MASK_YZ	
+#define MASK_JW		MASK_YW	
+#define MASK_KW		MASK_ZW	
+#define MASK_IJK	MASK_XYZ
+#define MASK_IJW	MASK_XYW
+#define MASK_IKW	MASK_XZW
+#define MASK_JKW	MASK_YZW
+#define MASK_IJKW	MASK_XYZW
+
 #pragma endregion
 
 #pragma region Vector Typedefs
