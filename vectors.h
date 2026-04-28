@@ -6,7 +6,7 @@
 #pragma region Component Masks
 // Used for addressing components of a vec2, vec3, or vec4
 typedef size_t mask_t;
-static_assert(sizeof(mask_t) == __SIZEOF_POINTER__, "");
+static_assert(sizeof(mask_t) == sizeof(void*), "");
 
 #define X (mask_t)(0)
 #define Y (mask_t)(1)
