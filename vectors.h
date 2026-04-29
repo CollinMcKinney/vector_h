@@ -1799,6 +1799,175 @@ static vec4 vec4_invert_color(vec4 color)
     return inverted_color;
 }
 
+/* Identity quaternion representing no rotation. */
+static vec4 quat_identity(void)
+{
+    return vec4_init_from_4(0.0f, 0.0f, 0.0f, 1.0f);
+}
+
+/* Quaternion conjugate. */
+static vec4 quat_conjugate(vec4 src0)
+{
+    return vec4_init_from_4(-src0.rotation.i, -src0.rotation.j, -src0.rotation.k, src0.rotation.w);
+}
+
+/* Multiplicative inverse of a quaternion. */
+static vec4 quat_inverse(vec4 src0)
+{
+    real magnitude_squared = vec4_dot(src0, src0);
+    vec4 conjugate = quat_conjugate(src0);
+    vec4 inverse = vec4_div_scalar(conjugate, magnitude_squared);
+    return inverse;
+}
+
+/* Hamilton product of two quaternions. */
+static vec4 quat_mul(vec4 multiplicand, vec4 multiplier)
+{
+    vec4 product;
+    product.rotation.i = (multiplicand.rotation.w * multiplier.rotation.i) + (multiplicand.rotation.i * multiplier.rotation.w) + (multiplicand.rotation.j * multiplier.rotation.k) - (multiplicand.rotation.k * multiplier.rotation.j);
+    product.rotation.j = (multiplicand.rotation.w * multiplier.rotation.j) - (multiplicand.rotation.i * multiplier.rotation.k) + (multiplicand.rotation.j * multiplier.rotation.w) + (multiplicand.rotation.k * multiplier.rotation.i);
+    product.rotation.k = (multiplicand.rotation.w * multiplier.rotation.k) + (multiplicand.rotation.i * multiplier.rotation.j) - (multiplicand.rotation.j * multiplier.rotation.i) + (multiplicand.rotation.k * multiplier.rotation.w);
+    product.rotation.w = (multiplicand.rotation.w * multiplier.rotation.w) - (multiplicand.rotation.i * multiplier.rotation.i) - (multiplicand.rotation.j * multiplier.rotation.j) - (multiplicand.rotation.k * multiplier.rotation.k);
+    return product;
+}
+
+/* Construct a quaternion from an axis and an angle in radians. */
+static vec4 quat_from_axis_angle(vec3 axis, real radians)
+{
+    real half_angle = radians * 0.5f;
+    real sin_half = (real)sin((double)half_angle);
+    real cos_half = (real)cos((double)half_angle);
+    vec3 unit_axis = vec3_normalize(axis);
+    return vec4_init_from_4(unit_axis.rotation.i * sin_half, unit_axis.rotation.j * sin_half, unit_axis.rotation.k * sin_half, cos_half);
+}
+
+/* Extract the axis and angle in radians from a quaternion, returned as (i, j, k, radians). */
+static vec4 quat_to_axis_angle(vec4 rotation)
+{
+    vec4 normalized = vec4_normalize(rotation);
+    real half_angle = (real)acos((double)normalized.rotation.w);
+    real sin_half = (real)sqrt((double)real_max(0.0f, 1.0f - (normalized.rotation.w * normalized.rotation.w)));
+
+    if (sin_half <= VECTORS_QUAT_EPSILON)
+    {
+        return vec4_init_from_4(1.0f, 0.0f, 0.0f, half_angle * 2.0f);
+    }
+
+    return vec4_init_from_4(
+        normalized.rotation.i / sin_half,
+        normalized.rotation.j / sin_half,
+        normalized.rotation.k / sin_half,
+        half_angle * 2.0f);
+}
+
+/* True if a quaternion has unit length within a small epsilon. */
+static bool quat_is_normalized(vec4 rotation)
+{
+    real magnitude_squared = vec4_dot(rotation, rotation);
+    return (real)fabs((double)(magnitude_squared - 1.0f)) <= VECTORS_QUAT_EPSILON;
+}
+
+/* Construct the shortest-arc quaternion rotating one vector onto another. */
+static vec4 quat_between_vec3(vec3 from, vec3 to)
+{
+    vec3 from_normalized = vec3_normalize(from);
+    vec3 to_normalized = vec3_normalize(to);
+    real dot = vec3_dot(from_normalized, to_normalized);
+    vec3 axis;      /* declared at top */
+    vec4 rotation;  /* declared at top */
+
+    if (dot >= (1.0f - VECTORS_QUAT_EPSILON))
+    {
+        return quat_identity();
+    }
+
+    if (dot <= (-1.0f + VECTORS_QUAT_EPSILON))
+    {
+        axis = vec3_cross(vec3_init_from_3(1.0f, 0.0f, 0.0f), from_normalized);
+        if (vec3_magnitude(axis) <= VECTORS_QUAT_EPSILON)
+        {
+            axis = vec3_cross(vec3_init_from_3(0.0f, 1.0f, 0.0f), from_normalized);
+        }
+        return quat_from_axis_angle(axis, VECTORS_PI);
+    }
+
+    axis = vec3_cross(from_normalized, to_normalized);
+    rotation = vec4_init_from_4(axis.rotation.i, axis.rotation.j, axis.rotation.k, 1.0f + dot);
+    return vec4_normalize(rotation);
+}
+
+/* Normalized linear interpolation between two quaternions. */
+static vec4 quat_nlerp(vec4 src0, vec4 src1, real factor)
+{
+    vec4 end = src1;
+    vec4 inverse_factor;
+    vec4 scaled_factor;
+    vec4 blended;
+
+    if (vec4_dot(src0, src1) < 0.0f)
+    {
+        end = vec4_negate(src1);
+    }
+
+    inverse_factor = vec4_mul_scalar(src0, 1.0f - factor);
+    scaled_factor = vec4_mul_scalar(end, factor);
+    blended = vec4_add(inverse_factor, scaled_factor);
+    return vec4_normalize(blended);
+}
+
+/* Spherical linear interpolation between two quaternions. */
+static vec4 quat_slerp(vec4 src0, vec4 src1, real factor)
+{
+    vec4 end = src1;
+    real dot = vec4_dot(src0, src1);
+    real theta;
+    real sin_theta;
+    real scale0;
+    real scale1;
+
+    if (dot < 0.0f)
+    {
+        end = vec4_negate(src1);
+        dot = -dot;
+    }
+
+    if (dot >= (1.0f - (VECTORS_QUAT_EPSILON * 5.0f)))
+    {
+        return quat_nlerp(src0, end, factor);
+    }
+
+    dot = (real)real_min(real_max(dot, -1.0f), 1.0f);
+    theta = (real)acos((double)dot);
+    sin_theta = (real)sin((double)theta);
+    scale0 = (real)sin((double)((1.0f - factor) * theta)) / sin_theta;
+    scale1 = (real)sin((double)(factor * theta)) / sin_theta;
+    return vec4_add(vec4_mul_scalar(src0, scale0), vec4_mul_scalar(end, scale1));
+}
+
+/* Rotate a vec3 by a quaternion. */
+static vec3 quat_rotate_vec3(vec4 rotation, vec3 vector)
+{
+    vec4 normalized = vec4_normalize(rotation);
+    vec3 qv = vec3_init_from_3(normalized.rotation.i, normalized.rotation.j, normalized.rotation.k);
+    vec3 uv = vec3_cross(qv, vector);
+    vec3 uuv = vec3_cross(qv, uv);
+    vec3 rotated = vec3_add(vector, vec3_mul_scalar(vec3_add(vec3_mul_scalar(uv, normalized.rotation.w), uuv), 2.0f));
+    return rotated;
+}
+
+/* Rotate a vec4 by a quaternion, preserving the incoming w component. */
+static vec4 quat_rotate_vec4(vec4 rotation, vec4 vector)
+{
+    vec3 vector_xyz = vec3_init_from_3(vector.position.x, vector.position.y, vector.position.z);
+    vec3 rotated_xyz = quat_rotate_vec3(rotation, vector_xyz);
+    vec4 rotated;
+    rotated.position.x = rotated_xyz.position.x;
+    rotated.position.y = rotated_xyz.position.y;
+    rotated.position.z = rotated_xyz.position.z;
+    rotated.position.w = vector.position.w;
+    return rotated;
+}
+
 /* Undefine internal helper macros */
 #undef CONCAT_
 #undef CONCAT
