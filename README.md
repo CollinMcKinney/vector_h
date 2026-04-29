@@ -1,4 +1,6 @@
 # vector_h
-(Graphics oriented) 
+(Graphics/Physics oriented) 
 
-Single header vector math library written in C (it does #include "math.h" for trig functions.)
+ANSI C compliant single header vector math library.
+    - Includes "math.h" for trig functions.
+    - Includes "limits.h" for determining which (unsigned) int type is 32 bits.
