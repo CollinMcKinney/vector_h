@@ -6,7 +6,8 @@
 
 #define CONCAT_(a, b) a##b
 #define CONCAT(a, b) CONCAT_(a, b)
-#define STATIC_ASSERT(expr) typedef char CONCAT(static_assert_at_line_, __LINE__)[(expr) ? 1 : -1]
+#define STATIC_ASSERT(expr, msg) \
+    typedef char CONCAT(ERROR__, CONCAT(msg, CONCAT(__LINE_, __LINE__)))[(expr) ? 1 : -1]
 
 #if !defined(__cplusplus) && !defined(__bool_true_false_are_defined)
     typedef int bool;
@@ -18,7 +19,7 @@
     #define VECTORS_REAL_TYPE float
 #endif
 typedef VECTORS_REAL_TYPE real;
-STATIC_ASSERT(sizeof(real) == 0x4);
+STATIC_ASSERT(sizeof(real) == 0x4, real_size_wrong);
 
 static real real_max(real src0, real src1) { return src0 > src1 ? src0 : src1; }
 static real real_min(real src0, real src1) { return src0 < src1 ? src0 : src1; }
@@ -41,7 +42,7 @@ static const real VECTORS_QUAT_EPSILON = (real)0.0001;
 #else
     #error "No 32-bit unsigned integer type found"
 #endif
-STATIC_ASSERT(sizeof(mask_t) == 0x4);
+STATIC_ASSERT(sizeof(mask_t) == 0x4, mask_t_size_wrong);
 
 #define X (mask_t)(0)
 #define Y (mask_t)(1)
@@ -136,7 +137,7 @@ typedef union vec2
     struct { real r, g; } color;
     struct { real s, t; } textcoord;
 } vec2;
-STATIC_ASSERT(sizeof(vec2) == 0x8);
+STATIC_ASSERT(sizeof(vec2) == 0x8, vec2_size_wrong);
 
 /* 3-component realing point vector. */
 typedef union vec3
@@ -147,7 +148,7 @@ typedef union vec3
     struct { real r, g, b; } color;
     struct { real s, t, p; } textcoord;
 } vec3;
-STATIC_ASSERT(sizeof(vec3) == 0xC);
+STATIC_ASSERT(sizeof(vec3) == 0xC, vec3_size_wrong);
 
 /* 4-component realing point vector. */
 typedef union vec4
@@ -158,7 +159,7 @@ typedef union vec4
     struct { real r, g, b, a; } color;
     struct { real s, t, p, q; } textcoord;
 } vec4;
-STATIC_ASSERT(sizeof(vec4) == 0x10);
+STATIC_ASSERT(sizeof(vec4) == 0x10, vec4_size_wrong);
 
 /* Swizzle (swap) the order of components */
 static vec2 vec2_swizzle(vec2 src0, mask_t a, mask_t b)
