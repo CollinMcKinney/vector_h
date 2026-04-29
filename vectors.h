@@ -2,7 +2,11 @@
 #define VECTORS_H
 
 #include <math.h>
-#include <stdint.h>
+#include <limits.h>
+
+#pragma region placeholder_region_name
+#define STATIC_ASSERT(expr) typedef char static_assert_t[(expr) ? 1 : -1]
+#pragma endregion
 
 #pragma region Math Constants
 #define VECTORS_PI      3.14159265358979323846f
@@ -11,8 +15,20 @@ static const float VECTORS_DEG2RAD = VECTORS_PI / 180.0f;
 #pragma endregion
 
 #pragma region Component Masks
-// Used for addressing components of a vec2, vec3, or vec4
-typedef uint32_t mask_t;
+// Try each unsigned type in order of preference (int first, then long, short, char)
+#if UINT_MAX == 0xFFFFFFFFU
+    typedef unsigned int mask_t;
+#elif ULONG_MAX == 0xFFFFFFFFUL
+    typedef unsigned long mask_t;
+#elif USHRT_MAX == 0xFFFFFFFFU
+    typedef unsigned short mask_t;
+#elif UCHAR_MAX == 0xFFFFFFFFU
+    typedef unsigned char mask_t;
+#else
+    #error "No 32‑bit unsigned integer type found"
+#endif
+STATIC_ASSERT(sizeof(mask_t) == 0x4, "");
+
 
 #define X (mask_t)(0)
 #define Y (mask_t)(1)
@@ -110,7 +126,7 @@ typedef union vec2
 	struct { float r, g; };
 	struct { float s, t; };
 } vec2;
-static_assert(sizeof(vec2) == 0x8, "");
+STATIC_ASSERT(sizeof(vec2) == 0x8, "");
 
 // 3-component floating point vector.
 typedef union vec3
@@ -121,7 +137,7 @@ typedef union vec3
 	struct { float r, g, b; };
 	struct { float s, t, p; };
 } vec3;
-static_assert(sizeof(vec3) == 0xC, "");
+STATIC_ASSERT(sizeof(vec3) == 0xC, "");
 
 // 4-component floating point vector.
 typedef union vec4
@@ -132,7 +148,7 @@ typedef union vec4
 	struct { float r, g, b, a; };
 	struct { float s, t, p, q; };
 } vec4;
-static_assert(sizeof(vec4) == 0x10, "");
+STATIC_ASSERT(sizeof(vec4) == 0x10, "");
 
 #pragma endregion
 
