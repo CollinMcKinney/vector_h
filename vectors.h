@@ -1,132 +1,405 @@
-﻿#if !defined(VECTORS_H)
+#if !defined(VECTORS_H)
 #define VECTORS_H
 
 #include <math.h>
 #include <limits.h>
 
-#define CONCAT_(a, b) a##b
-#define CONCAT(a, b) CONCAT_(a, b)
-#define STATIC_ASSERT(expr, msg) \
-    typedef char CONCAT(ERROR__, CONCAT(msg, CONCAT(__LINE_, __LINE__)))[(expr) ? 1 : -1]
-
-#if !defined(__cplusplus) && !defined(__bool_true_false_are_defined)
-    typedef int bool;
-    #define true 1
-    #define false 0
+#ifdef __cplusplus
+extern "C" {
 #endif
 
-#ifndef VECTORS_REAL_TYPE
-    #define VECTORS_REAL_TYPE float
+/* Select best available STATIC_ASSERT implementation. */
+#if defined(__cplusplus) && (__cplusplus >= 201103L)
+    #define STATIC_ASSERT(expr, msg) static_assert((expr), #msg)
+#elif defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201112L)
+    #define STATIC_ASSERT(expr, msg) _Static_assert((expr), #msg)
+#elif defined(_MSC_VER)
+    #define STATIC_ASSERT(expr, msg) static_assert((expr), #msg)
+#else
+    #define CONCAT_(a, b) a##b
+    #define CONCAT(a, b) CONCAT_(a, b)
+    #define STATIC_ASSERT(expr, msg) \
+        typedef char CONCAT(ERROR__, CONCAT(msg, CONCAT(__LINE_, __LINE__)))[((expr) ? 1 : -1)]
 #endif
-typedef VECTORS_REAL_TYPE real;
+
+/* -------------------------------------------------------------------------
+    User configuration - define ONE of these before including this header.
+    By default we use 32‑bit float.
+   ------------------------------------------------------------------------- */
+#if defined(VECTORS_REAL32_IS_DOUBLE)
+    #define VECTORS_REAL32 double
+    #define VECTORS_REAL_IS_FLOAT 0
+#else
+    /* default to float if VECTORS_REAL32_IS_FLOAT is defined or nothing is defined */
+    #define VECTORS_REAL32 float
+    #define VECTORS_REAL_IS_FLOAT 1
+#endif
+
+typedef VECTORS_REAL32 real;
 STATIC_ASSERT(sizeof(real) == 0x4, real_size_wrong);
 
-static real real_max(real src0, real src1) { return src0 > src1 ? src0 : src1; }
-static real real_min(real src0, real src1) { return src0 < src1 ? src0 : src1; }
-static real real_trunc(real src0) { return src0 >= 0 ? (real)floor(src0) : (real)ceil(src0); }
+/* -------------------------------------------------------------------------
+   Generic math helpers - adapt to language standard and float/double
+   ------------------------------------------------------------------------- */
+#if defined(__cplusplus)
+    #define REAL_MATH_1_ARG(func, x)      (func)(x)
+    #define REAL_MATH_2_ARG(func, x, y)   (func)((x), (y))
 
+#elif defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
+    #if VECTORS_REAL_IS_FLOAT
+        #define REAL_MATH_1_ARG(func, x)      func ## f(x)
+        #define REAL_MATH_2_ARG(func, x, y)   func ## f((x), (y))
+    #else
+        #define REAL_MATH_1_ARG(func, x)      func(x)
+        #define REAL_MATH_2_ARG(func, x, y)   func((x), (y))
+    #endif
+
+#else
+    /* C89 - always cast through double */
+    #define REAL_MATH_1_ARG(func, x)      ((real)func((double)(x)))
+    #define REAL_MATH_2_ARG(func, x, y)   ((real)func((double)(x), (double)(y)))
+#endif
+
+/* Real math functions available in all standards. */
+#define real_floor(x)  REAL_MATH_1_ARG(floor, x)
+#define real_ceil(x)   REAL_MATH_1_ARG(ceil, x)
+#define real_sin(x)    REAL_MATH_1_ARG(sin, x)
+#define real_cos(x)    REAL_MATH_1_ARG(cos, x)
+#define real_tan(x)    REAL_MATH_1_ARG(tan, x)
+#define real_asin(x)   REAL_MATH_1_ARG(asin, x)
+#define real_acos(x)   REAL_MATH_1_ARG(acos, x)
+#define real_atan(x)   REAL_MATH_1_ARG(atan, x)
+#define real_sinh(x)   REAL_MATH_1_ARG(sinh, x)
+#define real_cosh(x)   REAL_MATH_1_ARG(cosh, x)
+#define real_tanh(x)   REAL_MATH_1_ARG(tanh, x)
+#define real_abs(x)    REAL_MATH_1_ARG(fabs, x)
+#define real_sqrt(x)   REAL_MATH_1_ARG(sqrt, x)
+#define real_pow(x,y)  REAL_MATH_2_ARG(pow, x, y)
+
+/* C++ & C99+ - define macros to use the fmin, fmax, trunc library functions. */
+#if defined(__cplusplus) || (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L)
+    #define real_min(x,y)  REAL_MATH_2_ARG(fmin, x, y)
+    #define real_max(x,y)  REAL_MATH_2_ARG(fmax, x, y)
+    #define real_trunc(x)  REAL_MATH_1_ARG(trunc, x)
+/* C89 - provide static functions definitions for min, max, trunc. */
+#else
+    static real real_min(real x, real y) { return (real)((x) < (y) ? (x) : (y)); }
+    static real real_max(real x, real y) { return (real)((x) > (y) ? (x) : (y)); }
+    static real real_trunc(real x)  { return (x) >= 0 ? real_floor(x) : real_ceil(x); }
+#endif
+
+/* Real constants. */
 #define VECTORS_PI ((real)3.14159265358979323846)
 static const real VECTORS_RAD2DEG = (real)(180.0 / VECTORS_PI);
 static const real VECTORS_DEG2RAD = (real)(VECTORS_PI / 180.0);
 static const real VECTORS_QUAT_EPSILON = (real)0.0001;
 
-/* Try each unsigned type in order of preference (int first, then long, short, char) */
-#if UINT_MAX == 0xFFFFFFFFU
-    typedef unsigned int mask_t;
-#elif ULONG_MAX == 0xFFFFFFFFUL
-    typedef unsigned long mask_t;
-#elif USHRT_MAX == 0xFFFFFFFFU
-    typedef unsigned short mask_t;
-#elif UCHAR_MAX == 0xFFFFFFFFU
-    typedef unsigned char mask_t;
-#else
-    #error "No 32-bit unsigned integer type found"
+/* ================================================================== *
+ *  Boolean - bool (use the BOOL(x) macro to set or check booleans)
+ * ================================================================== */
+#if !defined(__cplusplus) && !defined(__bool_true_false_are_defined)
+    typedef int bool;
+    #define true ((bool)1)
+    #define false ((bool)0)
 #endif
-STATIC_ASSERT(sizeof(mask_t) == 0x4, mask_t_size_wrong);
+#define BOOL(x) ((x) ? true : false)
+STATIC_ASSERT(BOOL(true)  == true && true == 1, bool_true_fails);
+STATIC_ASSERT(BOOL(false) == false && false == 0, bool_false_fails);
+STATIC_ASSERT(BOOL(0x00)  == 0, bool_zero_fails);
+STATIC_ASSERT(BOOL(0xFF)  == 1, bool_nonzero_fails);
+STATIC_ASSERT(BOOL(-1)    == 1, bool_negative_fails);
 
-#define X (mask_t)(0)
-#define Y (mask_t)(1)
-#define Z (mask_t)(2)
-#define W (mask_t)(3)
+/* ================================================================== *
+ *  8‑bit unsigned  -  u8
+ * ================================================================== */
+#if UCHAR_MAX == 0xFFU
+    typedef unsigned char u8;
+    #define U8_MAX  UCHAR_MAX      /* 0xFFU */
+#else
+    #error "No 8‑bit unsigned integer type found"
+#endif
+STATIC_ASSERT(sizeof(u8) == 0x1, u8_size_wrong);
 
-#define MASK_X      (mask_t)(1 << X)
-#define MASK_Y      (mask_t)(1 << Y)
-#define MASK_Z      (mask_t)(1 << Z)
-#define MASK_W      (mask_t)(1 << W)
-#define MASK_XY     (mask_t)( MASK_X | MASK_Y )
-#define MASK_XZ     (mask_t)( MASK_X | MASK_Z )
-#define MASK_XW     (mask_t)( MASK_X | MASK_W )
-#define MASK_YZ     (mask_t)( MASK_Y | MASK_Z )
-#define MASK_YW     (mask_t)( MASK_Y | MASK_W )
-#define MASK_ZW     (mask_t)( MASK_Z | MASK_W )
-#define MASK_XYZ    (mask_t)( MASK_X | MASK_Y | MASK_Z )
-#define MASK_XYW    (mask_t)( MASK_X | MASK_Y | MASK_W )
-#define MASK_XZW    (mask_t)( MASK_X | MASK_Z | MASK_W )
-#define MASK_YZW    (mask_t)( MASK_Y | MASK_Z | MASK_W )
-#define MASK_XYZW   (mask_t)( MASK_X | MASK_Y | MASK_Z | MASK_W )
+/* ================================================================== *
+ *  8‑bit signed  -  i8
+ * ================================================================== */
+#if SCHAR_MAX == 0x7F && SCHAR_MIN == (-0x7F - 1)
+    /* most reliable: signed char */
+    typedef signed char i8;
+    #define I8_MAX  SCHAR_MAX      /* 0x7F */
+    #define I8_MIN  SCHAR_MIN      /* (-0x7F - 1) */
+#elif CHAR_MAX == 0x7F && CHAR_MIN == (-0x7F - 1)
+    typedef char i8;
+    #define I8_MAX  CHAR_MAX
+    #define I8_MIN  CHAR_MIN
+#else
+    #error "No 8‑bit signed integer type found"
+#endif
+STATIC_ASSERT(sizeof(i8) == 0x1, i8_size_wrong);
 
-#define I X
-#define J Y
-#define K Z
+/* ================================================================== *
+ *  16‑bit unsigned  -  u16
+ * ================================================================== */
+#if USHRT_MAX == 0xFFFFU
+    typedef unsigned short u16;
+    #define U16_MAX  USHRT_MAX      /* 0xFFFFU */
+#elif UINT_MAX == 0xFFFFU
+    typedef unsigned int u16;
+    #define U16_MAX  UINT_MAX       /* 0xFFFFU */
+#elif ULONG_MAX == 0xFFFFUL
+    typedef unsigned long u16;
+    #define U16_MAX  ULONG_MAX      /* 0xFFFFUL */
+#elif UCHAR_MAX == 0xFFFFU
+    typedef unsigned char u16;
+    #define U16_MAX  UCHAR_MAX      /* 0xFFFFU */
+#else
+    #error "No 16‑bit unsigned integer type found"
+#endif
+STATIC_ASSERT(sizeof(u16) == 0x2, u16_size_wrong);
+
+/* ================================================================== *
+ *  16‑bit signed  -  i16
+ * ================================================================== */
+#if SHRT_MAX == 0x7FFF
+    typedef short i16;
+    #define I16_MAX  SHRT_MAX       /* 0x7FFF */
+    #define I16_MIN  SHRT_MIN       /* (-0x7FFF - 1) */
+#elif INT_MAX == 0x7FFF
+    typedef int i16;
+    #define I16_MAX  INT_MAX
+    #define I16_MIN  INT_MIN
+#elif LONG_MAX == 0x7FFFL
+    typedef long i16;
+    #define I16_MAX  LONG_MAX
+    #define I16_MIN  LONG_MIN
+#elif SCHAR_MAX == 0x7FFF
+    /* very unusual: 16‑bit signed char */
+    typedef signed char i16;
+    #define I16_MAX  SCHAR_MAX
+    #define I16_MIN  SCHAR_MIN
+#else
+    #error "No 16‑bit signed integer type found"
+#endif
+STATIC_ASSERT(sizeof(i16) == 0x2, i16_size_wrong);
+
+/* ================================================================== *
+ *  32‑bit unsigned  -  u32
+ *   Order: unsigned int, unsigned long, unsigned short, unsigned char
+ * ================================================================== */
+#if UINT_MAX == 0xFFFFFFFFU
+    typedef unsigned int u32;
+    #define U32_MAX  UINT_MAX       /* 0xFFFFFFFFU */
+#elif ULONG_MAX == 0xFFFFFFFFUL
+    typedef unsigned long u32;
+    #define U32_MAX  ULONG_MAX      /* 0xFFFFFFFFUL */
+#elif USHRT_MAX == 0xFFFFFFFFU
+    typedef unsigned short u32;
+    #define U32_MAX  USHRT_MAX      /* 0xFFFFFFFFU */
+#elif UCHAR_MAX == 0xFFFFFFFFU
+    typedef unsigned char u32;
+    #define U32_MAX  UCHAR_MAX      /* 0xFFFFFFFFU */
+#else
+    #error "No 32‑bit unsigned integer type found"
+#endif
+STATIC_ASSERT(sizeof(u32) == 0x4, u32_size_wrong);
+typedef u32 flags32;
+STATIC_ASSERT(sizeof(flags32) == 0x4, flags32_size_wrong);
+typedef u32 string_id;
+STATIC_ASSERT(sizeof(string_id) == 0x4, string_id_size_wrong);
+
+/* ================================================================== *
+ *  32‑bit signed  -  i32
+ * ================================================================== */
+#if INT_MAX == 0x7FFFFFFF
+    typedef int i32;
+    #define I32_MAX  INT_MAX        /* 0x7FFFFFFF */
+    #define I32_MIN  INT_MIN        /* (-0x7FFFFFFF - 1) */
+#elif LONG_MAX == 0x7FFFFFFFL
+    typedef long i32;
+    #define I32_MAX  LONG_MAX
+    #define I32_MIN  LONG_MIN
+#elif SHRT_MAX == 0x7FFFFFFF
+    typedef short i32;
+    #define I32_MAX  SHRT_MAX
+    #define I32_MIN  SHRT_MIN
+#elif SCHAR_MAX == 0x7FFFFFFF
+    typedef signed char i32;
+    #define I32_MAX  SCHAR_MAX
+    #define I32_MIN  SCHAR_MIN
+#else
+    #error "No 32‑bit signed integer type found"
+#endif
+STATIC_ASSERT(sizeof(i32)     == 0x4, i32_size_wrong);
+
+/* ================================================================== *
+ *  64‑bit unsigned  -  u64
+ * ================================================================== */
+#if ULONG_MAX == 0xFFFFFFFFFFFFFFFFUL
+    typedef unsigned long u64;
+    #define U64_MAX  ULONG_MAX
+#elif UINT_MAX == 0xFFFFFFFFFFFFFFFFU
+    typedef unsigned int u64;
+    #define U64_MAX  UINT_MAX
+#elif USHRT_MAX == 0xFFFFFFFFFFFFFFFFU
+    typedef unsigned short u64;
+    #define U64_MAX  USHRT_MAX
+#elif UCHAR_MAX == 0xFFFFFFFFFFFFFFFFU
+    typedef unsigned char u64;
+    #define U64_MAX  UCHAR_MAX
+#else
+    #if defined(__GNUC__) || defined(__llvm__) || defined(_MSC_VER) || defined(__MWERKS__)
+        typedef unsigned long long u64;
+        #ifdef ULLONG_MAX
+            #define U64_MAX  ULLONG_MAX
+        #else
+            #define U64_MAX  (~0ULL)   /* all bits set */
+        #endif
+    #else
+        #error "No 64‑bit unsigned type found (need long long extension)"
+    #endif
+#endif
+STATIC_ASSERT(sizeof(u64) == 0x8, u64_size_wrong);
+
+/* ================================================================== *
+ *  64‑bit signed  -  i64
+ * ================================================================== */
+#if LONG_MAX == 0x7FFFFFFFFFFFFFFFL
+    typedef long i64;
+    #define I64_MAX  LONG_MAX
+    #define I64_MIN  LONG_MIN
+#elif INT_MAX == 0x7FFFFFFFFFFFFFFFLL
+    typedef int i64;
+    #define I64_MAX  INT_MAX
+    #define I64_MIN  INT_MIN
+#elif SHRT_MAX == 0x7FFFFFFFFFFFFFFFLL
+    typedef short i64;
+    #define I64_MAX  SHRT_MAX
+    #define I64_MIN  SHRT_MIN
+#elif SCHAR_MAX == 0x7FFFFFFFFFFFFFFFLL
+    typedef signed char i64;
+    #define I64_MAX  SCHAR_MAX
+    #define I64_MIN  SCHAR_MIN
+#else
+    #if defined(__GNUC__) || defined(__llvm__) || defined(_MSC_VER) || defined(__MWERKS__)
+        typedef long long i64;
+        #ifdef LLONG_MAX
+            #define I64_MAX  LLONG_MAX
+            #define I64_MIN  LLONG_MIN
+        #else
+            /* portable two’s complement computation (C89 without long long macros) */
+            #define I64_MAX  (0x7FFFFFFFFFFFFFFFLL)
+            #define I64_MIN  (-I64_MAX - 1)
+        #endif
+    #else
+        #error "No 64‑bit signed type found (need long long extension)"
+    #endif
+#endif
+STATIC_ASSERT(sizeof(i64) == 0x8, i64_size_wrong);
+
+#define _0 (u32)(0)
+#define _1 (u32)(1)
+#define _2 (u32)(2)
+#define _3 (u32)(3)
+
+#define MASK_0      (u32)(1 << _0)
+#define MASK_1      (u32)(1 << _1)
+#define MASK_2      (u32)(1 << _2)
+#define MASK_3      (u32)(1 << _3)
+#define MASK_01     (u32)( MASK_0 | MASK_1 )
+#define MASK_02     (u32)( MASK_0 | MASK_2 )
+#define MASK_03     (u32)( MASK_0 | MASK_3 )
+#define MASK_12     (u32)( MASK_1 | MASK_2 )
+#define MASK_13     (u32)( MASK_1 | MASK_3 )
+#define MASK_23     (u32)( MASK_2 | MASK_3 )
+#define MASK_012    (u32)( MASK_0 | MASK_1 | MASK_2 )
+#define MASK_013    (u32)( MASK_0 | MASK_1 | MASK_3 )
+#define MASK_023    (u32)( MASK_0 | MASK_2 | MASK_3 )
+#define MASK_123    (u32)( MASK_1 | MASK_2 | MASK_3 )
+#define MASK_0123   (u32)( MASK_0 | MASK_1 | MASK_2 | MASK_3 )
+
+#define X _0
+#define Y _1
+#define Z _2
+#define W _3
+
+#define MASK_X      MASK_0   
+#define MASK_Y      MASK_1   
+#define MASK_Z      MASK_2   
+#define MASK_W      MASK_3   
+#define MASK_XY     MASK_01  
+#define MASK_XZ     MASK_02  
+#define MASK_XW     MASK_03  
+#define MASK_YZ     MASK_12  
+#define MASK_YW     MASK_13  
+#define MASK_ZW     MASK_23  
+#define MASK_XYZ    MASK_012 
+#define MASK_XYW    MASK_013 
+#define MASK_XZW    MASK_023 
+#define MASK_YZW    MASK_123 
+#define MASK_XYZW   MASK_0123
+
+#define I _0
+#define J _1
+#define K _2
 /* #define W W */
 
-#define MASK_I      MASK_X  
-#define MASK_J      MASK_Y  
-#define MASK_K      MASK_Z  
-/* #define MASK_W      MASK_W */
-#define MASK_IJ     MASK_XY 
-#define MASK_IK     MASK_XZ 
-#define MASK_IW     MASK_XW 
-#define MASK_JK     MASK_YZ 
-#define MASK_JW     MASK_YW 
-#define MASK_KW     MASK_ZW 
-#define MASK_IJK    MASK_XYZ
-#define MASK_IJW    MASK_XYW
-#define MASK_IKW    MASK_XZW
-#define MASK_JKW    MASK_YZW
-#define MASK_IJKW   MASK_XYZW
+#define MASK_I      MASK_0   
+#define MASK_J      MASK_1   
+#define MASK_K      MASK_2   
+/* #define MASK_W   MASK_3 */
+#define MASK_IJ     MASK_01  
+#define MASK_IK     MASK_02  
+#define MASK_IW     MASK_03  
+#define MASK_JK     MASK_12  
+#define MASK_JW     MASK_13  
+#define MASK_KW     MASK_23  
+#define MASK_IJK    MASK_012 
+#define MASK_IJW    MASK_013 
+#define MASK_IKW    MASK_023 
+#define MASK_JKW    MASK_123 
+#define MASK_IJKW   MASK_0123
 
-#define R X
-#define G Y
-#define B Z
-#define A W
+#define R _0
+#define G _1
+#define B _2
+#define A _3
 
-#define MASK_R      MASK_X  
-#define MASK_G      MASK_Y  
-#define MASK_B      MASK_Z  
-#define MASK_A      MASK_W  
-#define MASK_RG     MASK_XY 
-#define MASK_RB     MASK_XZ 
-#define MASK_RA     MASK_XW 
-#define MASK_GB     MASK_YZ 
-#define MASK_GA     MASK_YW 
-#define MASK_BA     MASK_ZW 
-#define MASK_RGB    MASK_XYZ
-#define MASK_RGA    MASK_XYW
-#define MASK_RBA    MASK_XZW
-#define MASK_GBA    MASK_YZW
-#define MASK_RGBA   MASK_XYZW
+#define MASK_R      MASK_0   
+#define MASK_G      MASK_1   
+#define MASK_B      MASK_2   
+#define MASK_A      MASK_3   
+#define MASK_RG     MASK_01  
+#define MASK_RB     MASK_02  
+#define MASK_RA     MASK_03  
+#define MASK_GB     MASK_12  
+#define MASK_GA     MASK_13  
+#define MASK_BA     MASK_23  
+#define MASK_RGB    MASK_012 
+#define MASK_RGA    MASK_013 
+#define MASK_RBA    MASK_023 
+#define MASK_GBA    MASK_123 
+#define MASK_RGBA   MASK_0123
 
-#define S X
-#define T Y
-#define P Z
-#define Q W
+#define S _0
+#define T _1
+#define P _2
+#define Q _3
 
-#define MASK_S      MASK_X  
-#define MASK_T      MASK_Y  
-#define MASK_P      MASK_Z  
-#define MASK_Q      MASK_W  
-#define MASK_ST     MASK_XY 
-#define MASK_SP     MASK_XZ 
-#define MASK_SQ     MASK_XW 
-#define MASK_TP     MASK_YZ 
-#define MASK_TQ     MASK_YW 
-#define MASK_PQ     MASK_ZW 
-#define MASK_STP    MASK_XYZ
-#define MASK_STQ    MASK_XYW
-#define MASK_SPQ    MASK_XZW
-#define MASK_TPQ    MASK_YZW
-#define MASK_STPQ   MASK_XYZW
+#define MASK_S      MASK_0   
+#define MASK_T      MASK_1   
+#define MASK_P      MASK_2   
+#define MASK_Q      MASK_3   
+#define MASK_ST     MASK_01  
+#define MASK_SP     MASK_02  
+#define MASK_SQ     MASK_03  
+#define MASK_TP     MASK_12  
+#define MASK_TQ     MASK_13  
+#define MASK_PQ     MASK_23  
+#define MASK_STP    MASK_012 
+#define MASK_STQ    MASK_013 
+#define MASK_SPQ    MASK_023 
+#define MASK_TPQ    MASK_123 
+#define MASK_STPQ   MASK_0123
 
 /* 2-component realing point vector. */
 typedef union vec2
@@ -147,6 +420,7 @@ typedef union vec3
     struct { real i, j, k; } rotation;
     struct { real r, g, b; } color;
     struct { real s, t, p; } textcoord;
+	vec2 vec2;
 } vec3;
 STATIC_ASSERT(sizeof(vec3) == 0xC, vec3_size_wrong);
 
@@ -158,11 +432,36 @@ typedef union vec4
     struct { real i, j, k, w; } rotation;
     struct { real r, g, b, a; } color;
     struct { real s, t, p, q; } textcoord;
+	vec3 vec3;
 } vec4;
 STATIC_ASSERT(sizeof(vec4) == 0x10, vec4_size_wrong);
 
+typedef union mat2
+{
+	real data[4];
+	real transpose[2][2];
+	vec2 columns[2];
+} mat2;
+STATIC_ASSERT(sizeof(mat2) == 0x10, mat2_size_wrong);
+
+typedef union mat3
+{
+	real data[9];
+	real transpose[3][3];
+	vec3 columns[3];
+} mat3;
+STATIC_ASSERT(sizeof(mat3) == 0x24, mat3_size_wrong);
+
+typedef union mat4
+{
+	real data[16];
+	real transpose[4][4];
+	vec4 columns[4];
+} mat4;
+STATIC_ASSERT(sizeof(mat4) == 0x40, mat4_size_wrong);
+
 /* Swizzle (swap) the order of components */
-static vec2 vec2_swizzle(vec2 src0, mask_t a, mask_t b)
+static vec2 vec2_swizzle(vec2 src0, u32 a, u32 b)
 {
     vec2 swizzled;
     swizzled.components[0] = src0.components[a & 0x1];
@@ -171,11 +470,11 @@ static vec2 vec2_swizzle(vec2 src0, mask_t a, mask_t b)
 }
 
 /* Selects components from src0 if the corresponding bit in the mask is set, otherwise selects from src1. */
-static vec2 vec2_mask(vec2 src0, vec2 src1, mask_t mask)
+static vec2 vec2_mask(vec2 src0, vec2 src1, u32 mask)
 {
     vec2 masked;
-    masked.components[0] = mask & MASK_X ? src0.components[0] : src1.components[0];
-    masked.components[1] = mask & MASK_Y ? src0.components[1] : src1.components[1];
+    masked.components[0] = mask & MASK_0 ? src0.components[0] : src1.components[0];
+    masked.components[1] = mask & MASK_1 ? src0.components[1] : src1.components[1];
     return masked;
 }
 
@@ -282,8 +581,8 @@ static vec2 vec2_div_scalar(vec2 dividend, real divisor)
 static vec2 vec2_pow(vec2 base, vec2 power)
 {
     vec2 yield;
-    yield.components[0] = (real)pow((double)base.components[0], (double)power.components[0]);
-    yield.components[1] = (real)pow((double)base.components[1], (double)power.components[1]);
+    yield.components[0] = real_pow(base.components[0], power.components[0]);
+    yield.components[1] = real_pow(base.components[1], power.components[1]);
     return yield;
 }
 
@@ -291,8 +590,8 @@ static vec2 vec2_pow(vec2 base, vec2 power)
 static vec2 vec2_pow_scalar(vec2 base, real power)
 {
     vec2 yield;
-    yield.components[0] = (real)pow((double)base.components[0], (double)power);
-    yield.components[1] = (real)pow((double)base.components[1], (double)power);
+    yield.components[0] = real_pow(base.components[0], power);
+    yield.components[1] = real_pow(base.components[1], power);
     return yield;
 }
 
@@ -300,15 +599,15 @@ static vec2 vec2_pow_scalar(vec2 base, real power)
 static vec2 vec2_sqrt(vec2 radicand)
 {
     vec2 principal;
-    principal.components[0] = (real)sqrt((double)radicand.components[0]);
-    principal.components[1] = (real)sqrt((double)radicand.components[1]);
+    principal.components[0] = real_sqrt(radicand.components[0]);
+    principal.components[1] = real_sqrt(radicand.components[1]);
     return principal;
 }
 
 /* Per-component reciprocal. */
 static vec2 vec2_rcp(vec2 recipricand)
 {
-    vec2 ones        = vec2_init_from_1(1.f);
+    vec2 ones        = vec2_init_from_1(1.0f);
     vec2 reciprocal = vec2_div(ones, recipricand);
     return reciprocal;
 }
@@ -325,8 +624,8 @@ static vec2 vec2_rsqrt(vec2 radicand)
 static vec2 vec2_abs(vec2 src0)
 {
     vec2 rets;
-    rets.components[0] = (real)fabs((double)src0.components[0]);
-    rets.components[1] = (real)fabs((double)src0.components[1]);
+    rets.components[0] = real_abs(src0.components[0]);
+    rets.components[1] = real_abs(src0.components[1]);
     return rets;
 }
 
@@ -334,8 +633,8 @@ static vec2 vec2_abs(vec2 src0)
 static vec2 vec2_sin(vec2 theta)
 {
     vec2 sine;
-    sine.components[0] = (real)sin((double)theta.components[0]);
-    sine.components[1] = (real)sin((double)theta.components[1]);
+    sine.components[0] = real_sin(theta.components[0]);
+    sine.components[1] = real_sin(theta.components[1]);
     return sine;
 }
 
@@ -343,26 +642,26 @@ static vec2 vec2_sin(vec2 theta)
 static vec2 vec2_cos(vec2 theta)
 {
     vec2 cosine;
-    cosine.components[0] = (real)cos((double)theta.components[0]);
-    cosine.components[1] = (real)cos((double)theta.components[1]);
+    cosine.components[0] = real_cos(theta.components[0]);
+    cosine.components[1] = real_cos(theta.components[1]);
     return cosine;
 }
 
 /* Per-component tangent. */
 static vec2 vec2_tan(vec2 theta)
 {
-    vec2 tagent;
-    tagent.components[0] = (real)tan((double)theta.components[0]);
-    tagent.components[1] = (real)tan((double)theta.components[1]);
-    return tagent;
+    vec2 tangent;
+    tangent.components[0] = real_tan(theta.components[0]);
+    tangent.components[1] = real_tan(theta.components[1]);
+    return tangent;
 }
 
 /* Per-component arc-sine. */
 static vec2 vec2_asin(vec2 theta)
 {
     vec2 arc_sine;
-    arc_sine.components[0] = (real)asin((double)theta.components[0]);
-    arc_sine.components[1] = (real)asin((double)theta.components[1]);
+    arc_sine.components[0] = real_asin(theta.components[0]);
+    arc_sine.components[1] = real_asin(theta.components[1]);
     return arc_sine;
 }
 
@@ -370,8 +669,8 @@ static vec2 vec2_asin(vec2 theta)
 static vec2 vec2_acos(vec2 theta)
 {
     vec2 arc_cosine;
-    arc_cosine.components[0] = (real)acos((double)theta.components[0]);
-    arc_cosine.components[1] = (real)acos((double)theta.components[1]);
+    arc_cosine.components[0] = real_acos(theta.components[0]);
+    arc_cosine.components[1] = real_acos(theta.components[1]);
     return arc_cosine;
 }
 
@@ -379,8 +678,8 @@ static vec2 vec2_acos(vec2 theta)
 static vec2 vec2_atan(vec2 theta)
 {
     vec2 arc_tangent;
-    arc_tangent.components[0] = (real)atan((double)theta.components[0]);
-    arc_tangent.components[1] = (real)atan((double)theta.components[1]);
+    arc_tangent.components[0] = real_atan(theta.components[0]);
+    arc_tangent.components[1] = real_atan(theta.components[1]);
     return arc_tangent;
 }
 
@@ -412,8 +711,8 @@ static vec2 vec2_cot(vec2 theta)
 static vec2 vec2_sinh(vec2 theta)
 {
     vec2 hyperbolic_sine;
-    hyperbolic_sine.components[0] = (real)sinh((double)theta.components[0]);
-    hyperbolic_sine.components[1] = (real)sinh((double)theta.components[1]);
+    hyperbolic_sine.components[0] = real_sinh(theta.components[0]);
+    hyperbolic_sine.components[1] = real_sinh(theta.components[1]);
     return hyperbolic_sine;
 }
 
@@ -421,8 +720,8 @@ static vec2 vec2_sinh(vec2 theta)
 static vec2 vec2_cosh(vec2 theta)
 {
     vec2 hyperbolic_cosine;
-    hyperbolic_cosine.components[0] = (real)cosh((double)theta.components[0]);
-    hyperbolic_cosine.components[1] = (real)cosh((double)theta.components[1]);
+    hyperbolic_cosine.components[0] = real_cosh(theta.components[0]);
+    hyperbolic_cosine.components[1] = real_cosh(theta.components[1]);
     return hyperbolic_cosine;
 }
 
@@ -430,8 +729,8 @@ static vec2 vec2_cosh(vec2 theta)
 static vec2 vec2_tanh(vec2 theta)
 {
     vec2 hyperbolic_tangent;
-    hyperbolic_tangent.components[0] = (real)tanh((double)theta.components[0]);
-    hyperbolic_tangent.components[1] = (real)tanh((double)theta.components[1]);
+    hyperbolic_tangent.components[0] = real_tanh(theta.components[0]);
+    hyperbolic_tangent.components[1] = real_tanh(theta.components[1]);
     return hyperbolic_tangent;
 }
 
@@ -518,7 +817,7 @@ static vec2 vec2_reflect(vec2 incident, vec2 surface_normal)
 static real vec2_magnitude(vec2 src0)
 {
     real dot        = vec2_dot(src0, src0);
-    real magnitude = (real)sqrt((double)dot);
+    real magnitude	= real_sqrt(dot);
     return magnitude;
 }
 
@@ -545,7 +844,7 @@ static real vec2_angle(vec2 src0, vec2 src1)
     real mag_b      = vec2_magnitude(src1);
     real dot        = vec2_dot(src0, src1);
     real cos        = dot / (mag_a * mag_b);
-    real radians    = (real)acos((double)cos);
+    real radians    = real_acos(cos);
     return radians;
 }
 
@@ -577,8 +876,8 @@ static real vec2_perp(vec2 src0, vec2 src1)
 static vec2 vec2_floor(vec2 src0)
 {
     vec2 floored;
-    floored.components[0] = (real)floor((double)src0.components[0]);
-    floored.components[1] = (real)floor((double)src0.components[1]);
+    floored.components[0] = real_floor(src0.components[0]);
+    floored.components[1] = real_floor(src0.components[1]);
     return floored;
 }
 
@@ -586,8 +885,8 @@ static vec2 vec2_floor(vec2 src0)
 static vec2 vec2_ceil(vec2 src0)
 {
     vec2 ceiling;
-    ceiling.components[0] = (real)ceil((double)src0.components[0]);
-    ceiling.components[1] = (real)ceil((double)src0.components[1]);
+    ceiling.components[0] = real_ceil(src0.components[0]);
+    ceiling.components[1] = real_ceil(src0.components[1]);
     return ceiling;
 }
 
@@ -595,8 +894,8 @@ static vec2 vec2_ceil(vec2 src0)
 static vec2 vec2_trunc(vec2 src0)
 {
     vec2 truncated;
-    truncated.components[0] = (real)real_trunc((double)src0.components[0]);
-    truncated.components[1] = (real)real_trunc((double)src0.components[1]);
+    truncated.components[0] = real_trunc(src0.components[0]);
+    truncated.components[1] = real_trunc(src0.components[1]);
     return truncated;
 }
 
@@ -604,8 +903,8 @@ static vec2 vec2_trunc(vec2 src0)
 static vec2 vec2_frac(vec2 src0)
 {
     vec2 rets;
-    rets.components[0] = src0.components[0] - (real)floor((double)src0.components[0]);
-    rets.components[1] = src0.components[1] - (real)floor((double)src0.components[1]);
+    rets.components[0] = src0.components[0] - real_floor(src0.components[0]);
+    rets.components[1] = src0.components[1] - real_floor(src0.components[1]);
     return rets;
 }
 
@@ -613,8 +912,8 @@ static vec2 vec2_frac(vec2 src0)
 static vec2 vec2_max(vec2 src0, vec2 src1)
 {
     vec2 maximum;
-    maximum.components[0] = (real)real_max((double)src0.components[0], (double)src1.components[0]);
-    maximum.components[1] = (real)real_max((double)src0.components[1], (double)src1.components[1]);
+    maximum.components[0] = real_max(src0.components[0], src1.components[0]);
+    maximum.components[1] = real_max(src0.components[1], src1.components[1]);
     return maximum;
 }
 
@@ -622,8 +921,8 @@ static vec2 vec2_max(vec2 src0, vec2 src1)
 static vec2 vec2_max_scalar(vec2 src0, real src1)
 {
     vec2 maximum;
-    maximum.components[0] = (real)real_max((double)src0.components[0], (double)src1);
-    maximum.components[1] = (real)real_max((double)src0.components[1], (double)src1);
+    maximum.components[0] = real_max(src0.components[0], src1);
+    maximum.components[1] = real_max(src0.components[1], src1);
     return maximum;
 }
 
@@ -631,8 +930,8 @@ static vec2 vec2_max_scalar(vec2 src0, real src1)
 static vec2 vec2_min(vec2 src0, vec2 src1)
 {
     vec2 minimum;
-    minimum.components[0] = (real)real_min((double)src0.components[0], (double)src1.components[0]);
-    minimum.components[1] = (real)real_min((double)src0.components[1], (double)src1.components[1]);
+    minimum.components[0] = real_min(src0.components[0], src1.components[0]);
+    minimum.components[1] = real_min(src0.components[1], src1.components[1]);
     return minimum;
 }
 
@@ -640,8 +939,8 @@ static vec2 vec2_min(vec2 src0, vec2 src1)
 static vec2 vec2_min_scalar(vec2 src0, real src1)
 {
     vec2 minimum;
-    minimum.components[0] = (real)real_min((double)src0.components[0], (double)src1);
-    minimum.components[1] = (real)real_min((double)src0.components[1], (double)src1);
+    minimum.components[0] = real_min(src0.components[0], src1);
+    minimum.components[1] = real_min(src0.components[1], src1);
     return minimum;
 }
 
@@ -663,7 +962,7 @@ static vec2 vec2_clamp_scalar(vec2 src0, real minimum, real maximum)
 
 
 /* Swizzle (swap) the order of components. */
-static vec3 vec3_swizzle(vec3 src0, mask_t a, mask_t b, mask_t c)
+static vec3 vec3_swizzle(vec3 src0, u32 a, u32 b, u32 c)
 {
     vec3 swizzled;
     swizzled.components[0] = src0.components[a >= 3 ? 0 : a];
@@ -673,12 +972,12 @@ static vec3 vec3_swizzle(vec3 src0, mask_t a, mask_t b, mask_t c)
 }
 
 /* Selects components from src0 if the corresponding bit in the mask is set, otherwise selects from src1. */
-static vec3 vec3_mask(vec3 src0, vec3 src1, mask_t mask)
+static vec3 vec3_mask(vec3 src0, vec3 src1, u32 mask)
 {
     vec3 masked;
-    masked.components[0] = mask & MASK_X ? src0.components[0] : src1.components[0];
-    masked.components[1] = mask & MASK_Y ? src0.components[1] : src1.components[1];
-    masked.components[2] = mask & MASK_Z ? src0.components[2] : src1.components[2];
+    masked.components[0] = mask & MASK_0 ? src0.components[0] : src1.components[0];
+    masked.components[1] = mask & MASK_1 ? src0.components[1] : src1.components[1];
+    masked.components[2] = mask & MASK_2 ? src0.components[2] : src1.components[2];
     return masked;
 }
 
@@ -796,9 +1095,9 @@ static vec3 vec3_div_scalar(vec3 dividend, real divisor)
 static vec3 vec3_pow(vec3 base, vec3 power)
 {
     vec3 yield;
-    yield.components[0] = (real)pow((double)base.components[0], (double)power.components[0]);
-    yield.components[1] = (real)pow((double)base.components[1], (double)power.components[1]);
-    yield.components[2] = (real)pow((double)base.components[2], (double)power.components[2]);
+    yield.components[0] = real_pow(base.components[0], power.components[0]);
+    yield.components[1] = real_pow(base.components[1], power.components[1]);
+    yield.components[2] = real_pow(base.components[2], power.components[2]);
     return yield;
 }
 
@@ -806,9 +1105,9 @@ static vec3 vec3_pow(vec3 base, vec3 power)
 static vec3 vec3_pow_scalar(vec3 base, real power)
 {
     vec3 yield;
-    yield.components[0] = (real)pow((double)base.components[0], (double)power);
-    yield.components[1] = (real)pow((double)base.components[1], (double)power);
-    yield.components[2] = (real)pow((double)base.components[2], (double)power);
+    yield.components[0] = real_pow(base.components[0], power);
+    yield.components[1] = real_pow(base.components[1], power);
+    yield.components[2] = real_pow(base.components[2], power);
     return yield;
 }
 
@@ -816,9 +1115,9 @@ static vec3 vec3_pow_scalar(vec3 base, real power)
 static vec3 vec3_sqrt(vec3 radicand)
 {
     vec3 principal;
-    principal.components[0] = (real)sqrt((double)radicand.components[0]);
-    principal.components[1] = (real)sqrt((double)radicand.components[1]);
-    principal.components[2] = (real)sqrt((double)radicand.components[2]);
+    principal.components[0] = real_sqrt(radicand.components[0]);
+    principal.components[1] = real_sqrt(radicand.components[1]);
+    principal.components[2] = real_sqrt(radicand.components[2]);
     return principal;
 }
 
@@ -842,9 +1141,9 @@ static vec3 vec3_rsqrt(vec3 radicand)
 static vec3 vec3_abs(vec3 src0)
 {
     vec3 rets;
-    rets.components[0] = (real)fabs((double)src0.components[0]);
-    rets.components[1] = (real)fabs((double)src0.components[1]);
-    rets.components[2] = (real)fabs((double)src0.components[2]);
+    rets.components[0] = real_abs(src0.components[0]);
+    rets.components[1] = real_abs(src0.components[1]);
+    rets.components[2] = real_abs(src0.components[2]);
     return rets;
 }
 
@@ -852,9 +1151,9 @@ static vec3 vec3_abs(vec3 src0)
 static vec3 vec3_sin(vec3 theta)
 {
     vec3 sine;
-    sine.components[0] = (real)sin((double)theta.components[0]);
-    sine.components[1] = (real)sin((double)theta.components[1]);
-    sine.components[2] = (real)sin((double)theta.components[2]);
+    sine.components[0] = real_sin(theta.components[0]);
+    sine.components[1] = real_sin(theta.components[1]);
+    sine.components[2] = real_sin(theta.components[2]);
     return sine;
 }
 
@@ -862,29 +1161,29 @@ static vec3 vec3_sin(vec3 theta)
 static vec3 vec3_cos(vec3 theta)
 {
     vec3 cosine;
-    cosine.components[0] = (real)cos((double)theta.components[0]);
-    cosine.components[1] = (real)cos((double)theta.components[1]);
-    cosine.components[2] = (real)cos((double)theta.components[2]);
+    cosine.components[0] = real_cos(theta.components[0]);
+    cosine.components[1] = real_cos(theta.components[1]);
+    cosine.components[2] = real_cos(theta.components[2]);
     return cosine;
 }
 
 /* Per-component tangent. */
 static vec3 vec3_tan(vec3 theta)
 {
-    vec3 tagent;
-    tagent.components[0] = (real)tan((double)theta.components[0]);
-    tagent.components[1] = (real)tan((double)theta.components[1]);
-    tagent.components[2] = (real)tan((double)theta.components[2]);
-    return tagent;
+    vec3 tangent;
+    tangent.components[0] = real_tan(theta.components[0]);
+    tangent.components[1] = real_tan(theta.components[1]);
+    tangent.components[2] = real_tan(theta.components[2]);
+    return tangent;
 }
 
 /* Per-component arc-sine. */
 static vec3 vec3_asin(vec3 theta)
 {
     vec3 arc_sine;
-    arc_sine.components[0] = (real)asin((double)theta.components[0]);
-    arc_sine.components[1] = (real)asin((double)theta.components[1]);
-    arc_sine.components[2] = (real)asin((double)theta.components[2]);
+    arc_sine.components[0] = real_asin(theta.components[0]);
+    arc_sine.components[1] = real_asin(theta.components[1]);
+    arc_sine.components[2] = real_asin(theta.components[2]);
     return arc_sine;
 }
 
@@ -892,9 +1191,9 @@ static vec3 vec3_asin(vec3 theta)
 static vec3 vec3_acos(vec3 theta)
 {
     vec3 arc_cosine;
-    arc_cosine.components[0] = (real)acos((double)theta.components[0]);
-    arc_cosine.components[1] = (real)acos((double)theta.components[1]);
-    arc_cosine.components[2] = (real)acos((double)theta.components[2]);
+    arc_cosine.components[0] = real_acos(theta.components[0]);
+    arc_cosine.components[1] = real_acos(theta.components[1]);
+    arc_cosine.components[2] = real_acos(theta.components[2]);
     return arc_cosine;
 }
 
@@ -902,9 +1201,9 @@ static vec3 vec3_acos(vec3 theta)
 static vec3 vec3_atan(vec3 theta)
 {
     vec3 arc_tangent;
-    arc_tangent.components[0] = (real)atan((double)theta.components[0]);
-    arc_tangent.components[1] = (real)atan((double)theta.components[1]);
-    arc_tangent.components[2] = (real)atan((double)theta.components[2]);
+    arc_tangent.components[0] = real_atan(theta.components[0]);
+    arc_tangent.components[1] = real_atan(theta.components[1]);
+    arc_tangent.components[2] = real_atan(theta.components[2]);
     return arc_tangent;
 }
 
@@ -936,9 +1235,9 @@ static vec3 vec3_cot(vec3 theta)
 static vec3 vec3_sinh(vec3 theta)
 {
     vec3 hyperbolic_sine;
-    hyperbolic_sine.components[0] = (real)sinh((double)theta.components[0]);
-    hyperbolic_sine.components[1] = (real)sinh((double)theta.components[1]);
-    hyperbolic_sine.components[2] = (real)sinh((double)theta.components[2]);
+    hyperbolic_sine.components[0] = real_sinh(theta.components[0]);
+    hyperbolic_sine.components[1] = real_sinh(theta.components[1]);
+    hyperbolic_sine.components[2] = real_sinh(theta.components[2]);
     return hyperbolic_sine;
 }
 
@@ -946,9 +1245,9 @@ static vec3 vec3_sinh(vec3 theta)
 static vec3 vec3_cosh(vec3 theta)
 {
     vec3 hyperbolic_cosine;
-    hyperbolic_cosine.components[0] = (real)cosh((double)theta.components[0]);
-    hyperbolic_cosine.components[1] = (real)cosh((double)theta.components[1]);
-    hyperbolic_cosine.components[2] = (real)cosh((double)theta.components[2]);
+    hyperbolic_cosine.components[0] = real_cosh(theta.components[0]);
+    hyperbolic_cosine.components[1] = real_cosh(theta.components[1]);
+    hyperbolic_cosine.components[2] = real_cosh(theta.components[2]);
     return hyperbolic_cosine;
 }
 
@@ -956,9 +1255,9 @@ static vec3 vec3_cosh(vec3 theta)
 static vec3 vec3_tanh(vec3 theta)
 {
     vec3 hyperbolic_tangent;
-    hyperbolic_tangent.components[0] = (real)tanh((double)theta.components[0]);
-    hyperbolic_tangent.components[1] = (real)tanh((double)theta.components[1]);
-    hyperbolic_tangent.components[2] = (real)tanh((double)theta.components[2]);
+    hyperbolic_tangent.components[0] = real_tanh(theta.components[0]);
+    hyperbolic_tangent.components[1] = real_tanh(theta.components[1]);
+    hyperbolic_tangent.components[2] = real_tanh(theta.components[2]);
     return hyperbolic_tangent;
 }
 
@@ -1047,7 +1346,7 @@ static vec3 vec3_reflect(vec3 incident, vec3 surface_normal)
 static real vec3_magnitude(vec3 src0)
 {
     real dot        = vec3_dot(src0, src0);
-    real magnitude  = (real)sqrt((double)dot);
+    real magnitude  = real_sqrt(dot);
     return magnitude;
 }
 
@@ -1074,7 +1373,7 @@ static real vec3_angle(vec3 src0, vec3 src1)
     real mag_b      = vec3_magnitude(src1);
     real dot        = vec3_dot(src0, src1);
     real cos        = dot / (mag_a * mag_b);
-    real radians    = (real)acos((double)cos);
+    real radians    = real_acos(cos);
     return radians;
 }
 
@@ -1112,9 +1411,9 @@ static vec3 vec3_cross(vec3 src0, vec3 src1)
 static vec3 vec3_floor(vec3 src0)
 {
     vec3 floored;
-    floored.components[0] = (real)floor((double)src0.components[0]);
-    floored.components[1] = (real)floor((double)src0.components[1]);
-    floored.components[2] = (real)floor((double)src0.components[2]);
+    floored.components[0] = real_floor(src0.components[0]);
+    floored.components[1] = real_floor(src0.components[1]);
+    floored.components[2] = real_floor(src0.components[2]);
     return floored;
 }
 
@@ -1122,9 +1421,9 @@ static vec3 vec3_floor(vec3 src0)
 static vec3 vec3_ceil(vec3 src0)
 {
     vec3 ceiling;
-    ceiling.components[0] = (real)ceil((double)src0.components[0]);
-    ceiling.components[1] = (real)ceil((double)src0.components[1]);
-    ceiling.components[2] = (real)ceil((double)src0.components[2]);
+    ceiling.components[0] = real_ceil(src0.components[0]);
+    ceiling.components[1] = real_ceil(src0.components[1]);
+    ceiling.components[2] = real_ceil(src0.components[2]);
     return ceiling;
 }
 
@@ -1132,9 +1431,9 @@ static vec3 vec3_ceil(vec3 src0)
 static vec3 vec3_trunc(vec3 src0)
 {
     vec3 truncated;
-    truncated.components[0] = (real)real_trunc((double)src0.components[0]);
-    truncated.components[1] = (real)real_trunc((double)src0.components[1]);
-    truncated.components[2] = (real)real_trunc((double)src0.components[2]);
+    truncated.components[0] = real_trunc(src0.components[0]);
+    truncated.components[1] = real_trunc(src0.components[1]);
+    truncated.components[2] = real_trunc(src0.components[2]);
     return truncated;
 }
 
@@ -1142,9 +1441,9 @@ static vec3 vec3_trunc(vec3 src0)
 static vec3 vec3_frac(vec3 src0)
 {
     vec3 rets;
-    rets.components[0] = src0.components[0] - (real)floor((double)src0.components[0]);
-    rets.components[1] = src0.components[1] - (real)floor((double)src0.components[1]);
-    rets.components[2] = src0.components[2] - (real)floor((double)src0.components[2]);
+    rets.components[0] = src0.components[0] - real_floor(src0.components[0]);
+    rets.components[1] = src0.components[1] - real_floor(src0.components[1]);
+    rets.components[2] = src0.components[2] - real_floor(src0.components[2]);
     return rets;
 }
 
@@ -1152,9 +1451,9 @@ static vec3 vec3_frac(vec3 src0)
 static vec3 vec3_max(vec3 src0, vec3 src1)
 {
     vec3 maximum;
-    maximum.components[0] = (real)real_max((double)src0.components[0], (double)src1.components[0]);
-    maximum.components[1] = (real)real_max((double)src0.components[1], (double)src1.components[1]);
-    maximum.components[2] = (real)real_max((double)src0.components[2], (double)src1.components[2]);
+    maximum.components[0] = real_max(src0.components[0], src1.components[0]);
+    maximum.components[1] = real_max(src0.components[1], src1.components[1]);
+    maximum.components[2] = real_max(src0.components[2], src1.components[2]);
     return maximum;
 }
 
@@ -1162,9 +1461,9 @@ static vec3 vec3_max(vec3 src0, vec3 src1)
 static vec3 vec3_max_scalar(vec3 src0, real src1)
 {
     vec3 maximum;
-    maximum.components[0] = (real)real_max((double)src0.components[0], (double)src1);
-    maximum.components[1] = (real)real_max((double)src0.components[1], (double)src1);
-    maximum.components[2] = (real)real_max((double)src0.components[2], (double)src1);
+    maximum.components[0] = real_max(src0.components[0], src1);
+    maximum.components[1] = real_max(src0.components[1], src1);
+    maximum.components[2] = real_max(src0.components[2], src1);
     return maximum;
 }
 
@@ -1172,9 +1471,9 @@ static vec3 vec3_max_scalar(vec3 src0, real src1)
 static vec3 vec3_min(vec3 src0, vec3 src1)
 {
     vec3 minimum;
-    minimum.components[0] = (real)real_min((double)src0.components[0], (double)src1.components[0]);
-    minimum.components[1] = (real)real_min((double)src0.components[1], (double)src1.components[1]);
-    minimum.components[2] = (real)real_min((double)src0.components[2], (double)src1.components[2]);
+    minimum.components[0] = real_min(src0.components[0], src1.components[0]);
+    minimum.components[1] = real_min(src0.components[1], src1.components[1]);
+    minimum.components[2] = real_min(src0.components[2], src1.components[2]);
     return minimum;
 }
 
@@ -1182,9 +1481,9 @@ static vec3 vec3_min(vec3 src0, vec3 src1)
 static vec3 vec3_min_scalar(vec3 src0, real src1)
 {
     vec3 minimum;
-    minimum.components[0] = (real)real_min((double)src0.components[0], (double)src1);
-    minimum.components[1] = (real)real_min((double)src0.components[1], (double)src1);
-    minimum.components[2] = (real)real_min((double)src0.components[2], (double)src1);
+    minimum.components[0] = real_min(src0.components[0], src1);
+    minimum.components[1] = real_min(src0.components[1], src1);
+    minimum.components[2] = real_min(src0.components[2], src1);
     return minimum;
 }
 
@@ -1206,7 +1505,7 @@ static vec3 vec3_clamp_scalar(vec3 src0, real minimum, real maximum)
 
 
 /* Swizzle (swap) the order of components. */
-static vec4 vec4_swizzle(vec4 src0, mask_t a, mask_t b, mask_t c, mask_t d)
+static vec4 vec4_swizzle(vec4 src0, u32 a, u32 b, u32 c, u32 d)
 {
     vec4 swizzled;
     swizzled.components[0] = src0.components[a & 0x3];
@@ -1217,13 +1516,13 @@ static vec4 vec4_swizzle(vec4 src0, mask_t a, mask_t b, mask_t c, mask_t d)
 }
 
 /* Selects components from src0 if the corresponding bit in the mask is set, otherwise selects from src1. */
-static vec4 vec4_mask(vec4 src0, vec4 src1, mask_t mask)
+static vec4 vec4_mask(vec4 src0, vec4 src1, u32 mask)
 {
     vec4 masked;
-    masked.components[0] = mask & MASK_X ? src0.components[0] : src1.components[0];
-    masked.components[1] = mask & MASK_Y ? src0.components[1] : src1.components[1];
-    masked.components[2] = mask & MASK_Z ? src0.components[2] : src1.components[2];
-    masked.components[3] = mask & MASK_W ? src0.components[3] : src1.components[3];
+    masked.components[0] = mask & MASK_0 ? src0.components[0] : src1.components[0];
+    masked.components[1] = mask & MASK_1 ? src0.components[1] : src1.components[1];
+    masked.components[2] = mask & MASK_2 ? src0.components[2] : src1.components[2];
+    masked.components[3] = mask & MASK_3 ? src0.components[3] : src1.components[3];
     return masked;
 }
 
@@ -1352,10 +1651,10 @@ static vec4 vec4_div_scalar(vec4 dividend, real divisor)
 static vec4 vec4_pow(vec4 base, vec4 power)
 {
     vec4 yield;
-    yield.components[0] = (real)pow((double)base.components[0], (double)power.components[0]);
-    yield.components[1] = (real)pow((double)base.components[1], (double)power.components[1]);
-    yield.components[2] = (real)pow((double)base.components[2], (double)power.components[2]);
-    yield.components[3] = (real)pow((double)base.components[3], (double)power.components[3]);
+    yield.components[0] = real_pow(base.components[0], power.components[0]);
+    yield.components[1] = real_pow(base.components[1], power.components[1]);
+    yield.components[2] = real_pow(base.components[2], power.components[2]);
+    yield.components[3] = real_pow(base.components[3], power.components[3]);
     return yield;
 }
 
@@ -1363,10 +1662,10 @@ static vec4 vec4_pow(vec4 base, vec4 power)
 static vec4 vec4_pow_scalar(vec4 base, real power)
 {
     vec4 yield;
-    yield.components[0] = (real)pow((double)base.components[0], (double)power);
-    yield.components[1] = (real)pow((double)base.components[1], (double)power);
-    yield.components[2] = (real)pow((double)base.components[2], (double)power);
-    yield.components[3] = (real)pow((double)base.components[3], (double)power);
+    yield.components[0] = real_pow(base.components[0], power);
+    yield.components[1] = real_pow(base.components[1], power);
+    yield.components[2] = real_pow(base.components[2], power);
+    yield.components[3] = real_pow(base.components[3], power);
     return yield;
 }
 
@@ -1374,10 +1673,10 @@ static vec4 vec4_pow_scalar(vec4 base, real power)
 static vec4 vec4_sqrt(vec4 radicand)
 {
     vec4 principal;
-    principal.components[0] = (real)sqrt((double)radicand.components[0]);
-    principal.components[1] = (real)sqrt((double)radicand.components[1]);
-    principal.components[2] = (real)sqrt((double)radicand.components[2]);
-    principal.components[3] = (real)sqrt((double)radicand.components[3]);
+    principal.components[0] = real_sqrt(radicand.components[0]);
+    principal.components[1] = real_sqrt(radicand.components[1]);
+    principal.components[2] = real_sqrt(radicand.components[2]);
+    principal.components[3] = real_sqrt(radicand.components[3]);
     return principal;
 }
 
@@ -1401,10 +1700,10 @@ static vec4 vec4_rsqrt(vec4 radicand)
 static vec4 vec4_abs(vec4 src0)
 {
     vec4 rets;
-    rets.components[0] = (real)fabs((double)src0.components[0]);
-    rets.components[1] = (real)fabs((double)src0.components[1]);
-    rets.components[2] = (real)fabs((double)src0.components[2]);
-    rets.components[3] = (real)fabs((double)src0.components[3]);
+    rets.components[0] = real_abs(src0.components[0]);
+    rets.components[1] = real_abs(src0.components[1]);
+    rets.components[2] = real_abs(src0.components[2]);
+    rets.components[3] = real_abs(src0.components[3]);
     return rets;
 }
 
@@ -1412,10 +1711,10 @@ static vec4 vec4_abs(vec4 src0)
 static vec4 vec4_sin(vec4 theta)
 {
     vec4 sine;
-    sine.components[0] = (real)sin((double)theta.components[0]);
-    sine.components[1] = (real)sin((double)theta.components[1]);
-    sine.components[2] = (real)sin((double)theta.components[2]);
-    sine.components[3] = (real)sin((double)theta.components[3]);
+    sine.components[0] = real_sin(theta.components[0]);
+    sine.components[1] = real_sin(theta.components[1]);
+    sine.components[2] = real_sin(theta.components[2]);
+    sine.components[3] = real_sin(theta.components[3]);
     return sine;
 }
 
@@ -1423,32 +1722,32 @@ static vec4 vec4_sin(vec4 theta)
 static vec4 vec4_cos(vec4 theta)
 {
     vec4 cosine;
-    cosine.components[0] = (real)cos((double)theta.components[0]);
-    cosine.components[1] = (real)cos((double)theta.components[1]);
-    cosine.components[2] = (real)cos((double)theta.components[2]);
-    cosine.components[3] = (real)cos((double)theta.components[3]);
+    cosine.components[0] = real_cos(theta.components[0]);
+    cosine.components[1] = real_cos(theta.components[1]);
+    cosine.components[2] = real_cos(theta.components[2]);
+    cosine.components[3] = real_cos(theta.components[3]);
     return cosine;
 }
 
 /* Per-component tangent. */
 static vec4 vec4_tan(vec4 theta)
 {
-    vec4 tagent;
-    tagent.components[0] = (real)tan((double)theta.components[0]);
-    tagent.components[1] = (real)tan((double)theta.components[1]);
-    tagent.components[2] = (real)tan((double)theta.components[2]);
-    tagent.components[3] = (real)tan((double)theta.components[3]);
-    return tagent;
+    vec4 tangent;
+    tangent.components[0] = real_tan(theta.components[0]);
+    tangent.components[1] = real_tan(theta.components[1]);
+    tangent.components[2] = real_tan(theta.components[2]);
+    tangent.components[3] = real_tan(theta.components[3]);
+    return tangent;
 }
 
 /* Per-component arc-sine. */
 static vec4 vec4_asin(vec4 theta)
 {
     vec4 arc_sine;
-    arc_sine.components[0] = (real)asin((double)theta.components[0]);
-    arc_sine.components[1] = (real)asin((double)theta.components[1]);
-    arc_sine.components[2] = (real)asin((double)theta.components[2]);
-    arc_sine.components[3] = (real)asin((double)theta.components[3]);
+    arc_sine.components[0] = real_asin(theta.components[0]);
+    arc_sine.components[1] = real_asin(theta.components[1]);
+    arc_sine.components[2] = real_asin(theta.components[2]);
+    arc_sine.components[3] = real_asin(theta.components[3]);
     return arc_sine;
 }
 
@@ -1456,10 +1755,10 @@ static vec4 vec4_asin(vec4 theta)
 static vec4 vec4_acos(vec4 theta)
 {
     vec4 arc_cosine;
-    arc_cosine.components[0] = (real)acos((double)theta.components[0]);
-    arc_cosine.components[1] = (real)acos((double)theta.components[1]);
-    arc_cosine.components[2] = (real)acos((double)theta.components[2]);
-    arc_cosine.components[3] = (real)acos((double)theta.components[3]);
+    arc_cosine.components[0] = real_acos(theta.components[0]);
+    arc_cosine.components[1] = real_acos(theta.components[1]);
+    arc_cosine.components[2] = real_acos(theta.components[2]);
+    arc_cosine.components[3] = real_acos(theta.components[3]);
     return arc_cosine;
 }
 
@@ -1467,10 +1766,10 @@ static vec4 vec4_acos(vec4 theta)
 static vec4 vec4_atan(vec4 theta)
 {
     vec4 arc_tangent;
-    arc_tangent.components[0] = (real)atan((double)theta.components[0]);
-    arc_tangent.components[1] = (real)atan((double)theta.components[1]);
-    arc_tangent.components[2] = (real)atan((double)theta.components[2]);
-    arc_tangent.components[3] = (real)atan((double)theta.components[3]);
+    arc_tangent.components[0] = real_atan(theta.components[0]);
+    arc_tangent.components[1] = real_atan(theta.components[1]);
+    arc_tangent.components[2] = real_atan(theta.components[2]);
+    arc_tangent.components[3] = real_atan(theta.components[3]);
     return arc_tangent;
 }
 
@@ -1502,10 +1801,10 @@ static vec4 vec4_cot(vec4 theta)
 static vec4 vec4_sinh(vec4 theta)
 {
     vec4 hyperbolic_sine;
-    hyperbolic_sine.components[0] = (real)sinh((double)theta.components[0]);
-    hyperbolic_sine.components[1] = (real)sinh((double)theta.components[1]);
-    hyperbolic_sine.components[2] = (real)sinh((double)theta.components[2]);
-    hyperbolic_sine.components[3] = (real)sinh((double)theta.components[3]);
+    hyperbolic_sine.components[0] = real_sinh(theta.components[0]);
+    hyperbolic_sine.components[1] = real_sinh(theta.components[1]);
+    hyperbolic_sine.components[2] = real_sinh(theta.components[2]);
+    hyperbolic_sine.components[3] = real_sinh(theta.components[3]);
     return hyperbolic_sine;
 }
 
@@ -1513,10 +1812,10 @@ static vec4 vec4_sinh(vec4 theta)
 static vec4 vec4_cosh(vec4 theta)
 {
     vec4 hyperbolic_cosine;
-    hyperbolic_cosine.components[0] = (real)cosh((double)theta.components[0]);
-    hyperbolic_cosine.components[1] = (real)cosh((double)theta.components[1]);
-    hyperbolic_cosine.components[2] = (real)cosh((double)theta.components[2]);
-    hyperbolic_cosine.components[3] = (real)cosh((double)theta.components[3]);
+    hyperbolic_cosine.components[0] = real_cosh(theta.components[0]);
+    hyperbolic_cosine.components[1] = real_cosh(theta.components[1]);
+    hyperbolic_cosine.components[2] = real_cosh(theta.components[2]);
+    hyperbolic_cosine.components[3] = real_cosh(theta.components[3]);
     return hyperbolic_cosine;
 }
 
@@ -1524,10 +1823,10 @@ static vec4 vec4_cosh(vec4 theta)
 static vec4 vec4_tanh(vec4 theta)
 {
     vec4 hyperbolic_tangent;
-    hyperbolic_tangent.components[0] = (real)tanh((double)theta.components[0]);
-    hyperbolic_tangent.components[1] = (real)tanh((double)theta.components[1]);
-    hyperbolic_tangent.components[2] = (real)tanh((double)theta.components[2]);
-    hyperbolic_tangent.components[3] = (real)tanh((double)theta.components[3]);
+    hyperbolic_tangent.components[0] = real_tanh(theta.components[0]);
+    hyperbolic_tangent.components[1] = real_tanh(theta.components[1]);
+    hyperbolic_tangent.components[2] = real_tanh(theta.components[2]);
+    hyperbolic_tangent.components[3] = real_tanh(theta.components[3]);
     return hyperbolic_tangent;
 }
 
@@ -1620,7 +1919,7 @@ static vec4 vec4_reflect(vec4 incident, vec4 surface_normal)
 static real vec4_magnitude(vec4 src0)
 {
     real dot        = vec4_dot(src0, src0);
-    real magnitude  = (real)sqrt((double)dot);
+    real magnitude  = real_sqrt(dot);
     return magnitude;
 }
 
@@ -1647,7 +1946,7 @@ static real vec4_angle(vec4 src0, vec4 src1)
     real mag_b      = vec4_magnitude(src1);
     real dot        = vec4_dot(src0, src1);
     real cos        = dot / (mag_a * mag_b);
-    real radians    = (real)acos((double)cos);
+    real radians    = real_acos(cos);
     return radians;
 }
 
@@ -1688,10 +1987,10 @@ static vec4 vec4_cross(vec4 src0, vec4 src1)
 static vec4 vec4_floor(vec4 src0)
 {
     vec4 floored;
-    floored.components[0] = (real)floor((double)src0.components[0]);
-    floored.components[1] = (real)floor((double)src0.components[1]);
-    floored.components[2] = (real)floor((double)src0.components[2]);
-    floored.components[3] = (real)floor((double)src0.components[3]);
+    floored.components[0] = real_floor(src0.components[0]);
+    floored.components[1] = real_floor(src0.components[1]);
+    floored.components[2] = real_floor(src0.components[2]);
+    floored.components[3] = real_floor(src0.components[3]);
     return floored;
 }
 
@@ -1699,10 +1998,10 @@ static vec4 vec4_floor(vec4 src0)
 static vec4 vec4_ceil(vec4 src0)
 {
     vec4 ceiling;
-    ceiling.components[0] = (real)ceil((double)src0.components[0]);
-    ceiling.components[1] = (real)ceil((double)src0.components[1]);
-    ceiling.components[2] = (real)ceil((double)src0.components[2]);
-    ceiling.components[3] = (real)ceil((double)src0.components[3]);
+    ceiling.components[0] = real_ceil(src0.components[0]);
+    ceiling.components[1] = real_ceil(src0.components[1]);
+    ceiling.components[2] = real_ceil(src0.components[2]);
+    ceiling.components[3] = real_ceil(src0.components[3]);
     return ceiling;
 }
 
@@ -1710,10 +2009,10 @@ static vec4 vec4_ceil(vec4 src0)
 static vec4 vec4_trunc(vec4 src0)
 {
     vec4 truncated;
-    truncated.components[0] = (real)real_trunc((double)src0.components[0]);
-    truncated.components[1] = (real)real_trunc((double)src0.components[1]);
-    truncated.components[2] = (real)real_trunc((double)src0.components[2]);
-    truncated.components[3] = (real)real_trunc((double)src0.components[3]);
+    truncated.components[0] = real_trunc(src0.components[0]);
+    truncated.components[1] = real_trunc(src0.components[1]);
+    truncated.components[2] = real_trunc(src0.components[2]);
+    truncated.components[3] = real_trunc(src0.components[3]);
     return truncated;
 }
 
@@ -1721,10 +2020,10 @@ static vec4 vec4_trunc(vec4 src0)
 static vec4 vec4_frac(vec4 src0)
 {
     vec4 rets;
-    rets.components[0] = src0.components[0] - (real)floor((double)src0.components[0]);
-    rets.components[1] = src0.components[1] - (real)floor((double)src0.components[1]);
-    rets.components[2] = src0.components[2] - (real)floor((double)src0.components[2]);
-    rets.components[3] = src0.components[3] - (real)floor((double)src0.components[3]);
+    rets.components[0] = src0.components[0] - real_floor(src0.components[0]);
+    rets.components[1] = src0.components[1] - real_floor(src0.components[1]);
+    rets.components[2] = src0.components[2] - real_floor(src0.components[2]);
+    rets.components[3] = src0.components[3] - real_floor(src0.components[3]);
     return rets;
 }
 
@@ -1732,10 +2031,10 @@ static vec4 vec4_frac(vec4 src0)
 static vec4 vec4_max(vec4 src0, vec4 src1)
 {
     vec4 maximum;
-    maximum.components[0] = (real)real_max((double)src0.components[0], (double)src1.components[0]);
-    maximum.components[1] = (real)real_max((double)src0.components[1], (double)src1.components[1]);
-    maximum.components[2] = (real)real_max((double)src0.components[2], (double)src1.components[2]);
-    maximum.components[3] = (real)real_max((double)src0.components[3], (double)src1.components[3]);
+    maximum.components[0] = real_max(src0.components[0], src1.components[0]);
+    maximum.components[1] = real_max(src0.components[1], src1.components[1]);
+    maximum.components[2] = real_max(src0.components[2], src1.components[2]);
+    maximum.components[3] = real_max(src0.components[3], src1.components[3]);
     return maximum;
 }
 
@@ -1743,10 +2042,10 @@ static vec4 vec4_max(vec4 src0, vec4 src1)
 static vec4 vec4_max_scalar(vec4 src0, real src1)
 {
     vec4 maximum;
-    maximum.components[0] = (real)real_max((double)src0.components[0], (double)src1);
-    maximum.components[1] = (real)real_max((double)src0.components[1], (double)src1);
-    maximum.components[2] = (real)real_max((double)src0.components[2], (double)src1);
-    maximum.components[3] = (real)real_max((double)src0.components[3], (double)src1);
+    maximum.components[0] = real_max(src0.components[0], src1);
+    maximum.components[1] = real_max(src0.components[1], src1);
+    maximum.components[2] = real_max(src0.components[2], src1);
+    maximum.components[3] = real_max(src0.components[3], src1);
     return maximum;
 }
 
@@ -1754,10 +2053,10 @@ static vec4 vec4_max_scalar(vec4 src0, real src1)
 static vec4 vec4_min(vec4 src0, vec4 src1)
 {
     vec4 minimum;
-    minimum.components[0] = (real)real_min((double)src0.components[0], (double)src1.components[0]);
-    minimum.components[1] = (real)real_min((double)src0.components[1], (double)src1.components[1]);
-    minimum.components[2] = (real)real_min((double)src0.components[2], (double)src1.components[2]);
-    minimum.components[3] = (real)real_min((double)src0.components[3], (double)src1.components[3]);
+    minimum.components[0] = real_min(src0.components[0], src1.components[0]);
+    minimum.components[1] = real_min(src0.components[1], src1.components[1]);
+    minimum.components[2] = real_min(src0.components[2], src1.components[2]);
+    minimum.components[3] = real_min(src0.components[3], src1.components[3]);
     return minimum;
 }
 
@@ -1765,10 +2064,10 @@ static vec4 vec4_min(vec4 src0, vec4 src1)
 static vec4 vec4_min_scalar(vec4 src0, real src1)
 {
     vec4 minimum;
-    minimum.components[0] = (real)real_min((double)src0.components[0], (double)src1);
-    minimum.components[1] = (real)real_min((double)src0.components[1], (double)src1);
-    minimum.components[2] = (real)real_min((double)src0.components[2], (double)src1);
-    minimum.components[3] = (real)real_min((double)src0.components[3], (double)src1);
+    minimum.components[0] = real_min(src0.components[0], src1);
+    minimum.components[1] = real_min(src0.components[1], src1);
+    minimum.components[2] = real_min(src0.components[2], src1);
+    minimum.components[3] = real_min(src0.components[3], src1);
     return minimum;
 }
 
@@ -1797,6 +2096,209 @@ static vec4 vec4_invert_color(vec4 color)
     inverted_color.color.b = 1.0f - color.color.b;
     inverted_color.color.a = color.color.a;
     return inverted_color;
+}
+
+/* -------------------------------------------------------------------------
+   3x3 matrix operations
+   ------------------------------------------------------------------------- */
+
+/* Construct a mat3 from a quaternion. */
+static mat3 mat3_from_quat(vec4 q)
+{
+    real xx = q.position.x * q.position.x;
+    real yy = q.position.y * q.position.y;
+    real zz = q.position.z * q.position.z;
+    real xy = q.position.x * q.position.y;
+    real xz = q.position.x * q.position.z;
+    real yz = q.position.y * q.position.z;
+    real wx = q.rotation.w * q.position.x;
+    real wy = q.rotation.w * q.position.y;
+    real wz = q.rotation.w * q.position.z;
+    mat3 m;
+    m.data[0] = 1.0f - 2.0f * (yy + zz);
+    m.data[1] = 2.0f * (xy - wz);
+    m.data[2] = 2.0f * (xz + wy);
+    m.data[3] = 2.0f * (xy + wz);
+    m.data[4] = 1.0f - 2.0f * (xx + zz);
+    m.data[5] = 2.0f * (yz - wx);
+    m.data[6] = 2.0f * (xz - wy);
+    m.data[7] = 2.0f * (yz + wx);
+    m.data[8] = 1.0f - 2.0f * (xx + yy);
+    return m;
+}
+
+/* Transpose a mat3 (swap rows and columns). */
+static mat3 mat3_transpose(mat3 m)
+{
+    mat3 t;
+    t.data[0] = m.data[0];
+    t.data[1] = m.data[3];
+    t.data[2] = m.data[6];
+    t.data[3] = m.data[1];
+    t.data[4] = m.data[4];
+    t.data[5] = m.data[7];
+    t.data[6] = m.data[2];
+    t.data[7] = m.data[5];
+    t.data[8] = m.data[8];
+    return t;
+}
+
+/* Multiply two mat3 matrices. */
+static mat3 mat3_mul(mat3 a, mat3 b)
+{
+    mat3 r;
+    i32 i, j, k;
+    for (i = 0; i < 3; i++)
+    {
+        for (j = 0; j < 3; j++)
+        {
+            real sum = 0;
+            for (k = 0; k < 3; k++)
+            {
+                sum += a.data[i * 3 + k] * b.data[k * 3 + j];
+            }
+            r.data[i * 3 + j] = sum;
+        }
+    }
+    return r;
+}
+
+/* Multiply a mat3 by a vec3. */
+static vec3 mat3_mul_vec3(mat3 m, vec3 v)
+{
+    vec3 result;
+    result.position.x = m.data[0] * v.position.x + m.data[1] * v.position.y + m.data[2] * v.position.z;
+    result.position.y = m.data[3] * v.position.x + m.data[4] * v.position.y + m.data[5] * v.position.z;
+    result.position.z = m.data[6] * v.position.x + m.data[7] * v.position.y + m.data[8] * v.position.z;
+    return result;
+}
+
+/* Inverse of a diagonal 3x3 matrix.
+   Assumes data[1],data[2],data[3],data[5],data[6],data[7] are zero.
+   Returns a mat3 with reciprocals on the diagonal (or zero where original is zero). */
+static mat3 mat3_inverse_diagonal(mat3 m) {
+    mat3 r;
+    r.data[0] = m.data[0] != 0.0f ? 1.0f / m.data[0] : 0.0f;
+    r.data[1] = 0.0f; r.data[2] = 0.0f;
+    r.data[3] = 0.0f;
+    r.data[4] = m.data[4] != 0.0f ? 1.0f / m.data[4] : 0.0f;
+    r.data[5] = 0.0f;
+    r.data[6] = 0.0f; r.data[7] = 0.0f;
+    r.data[8] = m.data[8] != 0.0f ? 1.0f / m.data[8] : 0.0f;
+    return r;
+}
+
+/* -------------------------------------------------------------------------
+   4x4 matrix operations
+   ------------------------------------------------------------------------- */
+
+/* Create an identity mat4 (1's on diagonal, 0's elsewhere). */
+static mat4 mat4_identity(void)
+{
+    mat4 r;
+    i32 i;
+    for (i = 0; i < 16; i++)
+    {
+        r.data[i] = 0;
+    }
+    r.transpose[0][0] = 1;
+    r.transpose[1][1] = 1;
+    r.transpose[2][2] = 1;
+    r.transpose[3][3] = 1;
+    return r;
+}
+
+/* Multiply two mat4 matrices. */
+static mat4 mat4_mul(mat4 a, mat4 b)
+{
+    mat4 r;
+    i32 i, j, k;
+    for (i = 0; i < 4; i++)
+    {
+        for (j = 0; j < 4; j++)
+        {
+            r.transpose[i][j] = 0;
+            for (k = 0; k < 4; k++)
+            {
+                r.transpose[i][j] += a.transpose[i][k] * b.transpose[k][j];
+            }
+        }
+    }
+    return r;
+}
+
+/* Multiply a mat4 by a vec4. */
+static vec4 mat4_mul_vec4(mat4 m, vec4 v)
+{
+    vec4 result;
+    result.position.x = m.transpose[0][0] * v.position.x + m.transpose[0][1] * v.position.y + m.transpose[0][2] * v.position.z + m.transpose[0][3] * v.rotation.w;
+    result.position.y = m.transpose[1][0] * v.position.x + m.transpose[1][1] * v.position.y + m.transpose[1][2] * v.position.z + m.transpose[1][3] * v.rotation.w;
+    result.position.z = m.transpose[2][0] * v.position.x + m.transpose[2][1] * v.position.y + m.transpose[2][2] * v.position.z + m.transpose[2][3] * v.rotation.w;
+    result.rotation.w = m.transpose[3][0] * v.position.x + m.transpose[3][1] * v.position.y + m.transpose[3][2] * v.position.z + m.transpose[3][3] * v.rotation.w;
+    return result;
+}
+
+/* Create a perspective projection mat4. */
+static mat4 mat4_perspective(real fov_y, real aspect, real near_plane, real far_plane)
+{
+    mat4 r;
+    real tan_half_fov;
+    i32 i, j;
+    for (i = 0; i < 4; i++)
+    {
+        for (j = 0; j < 4; j++)
+        {
+            r.transpose[i][j] = 0;
+        }
+    }
+    tan_half_fov = real_tan(fov_y * 0.5f);
+    r.transpose[0][0] = 1.0f / (aspect * tan_half_fov);
+    r.transpose[1][1] = 1.0f / tan_half_fov;
+    r.transpose[2][2] = (far_plane + near_plane) / (near_plane - far_plane);
+    r.transpose[2][3] = (2.0f * far_plane * near_plane) / (near_plane - far_plane);
+    r.transpose[3][2] = -1.0f;
+    return r;
+}
+
+/* Create a view matrix looking at a target. */
+static mat4 mat4_lookat(vec3 eye, vec3 center, vec3 up) {
+    vec3 forward, side, up_cross;
+    mat4 r;
+    real forward_len;
+
+    forward = vec3_sub(center, eye);
+    forward_len = vec3_magnitude(forward);
+    if (forward_len < VECTORS_QUAT_EPSILON) {
+        forward = vec3_init_from_3(0.0f, 0.0f, -1.0f);
+    } else {
+        forward = vec3_div_scalar(forward, forward_len);
+    }
+
+    side = vec3_cross(forward, up);
+    side = vec3_normalize(side);
+    up_cross = vec3_cross(side, forward);   /* already unit length */
+
+    r.transpose[0][0] = side.position.x;
+    r.transpose[0][1] = side.position.y;
+    r.transpose[0][2] = side.position.z;
+    r.transpose[0][3] = -vec3_dot(side, eye);      /* <-- translation X */
+
+    r.transpose[1][0] = up_cross.position.x;
+    r.transpose[1][1] = up_cross.position.y;
+    r.transpose[1][2] = up_cross.position.z;
+    r.transpose[1][3] = -vec3_dot(up_cross, eye);   /* <-- translation Y */
+
+    r.transpose[2][0] = -forward.position.x;
+    r.transpose[2][1] = -forward.position.y;
+    r.transpose[2][2] = -forward.position.z;
+    r.transpose[2][3] =  vec3_dot(forward, eye);     /* <-- translation Z */
+
+    r.transpose[3][0] = 0.0f;
+    r.transpose[3][1] = 0.0f;
+    r.transpose[3][2] = 0.0f;
+    r.transpose[3][3] = 1.0f;
+
+    return r;
 }
 
 /* Identity quaternion representing no rotation. */
@@ -1835,8 +2337,8 @@ static vec4 quat_mul(vec4 multiplicand, vec4 multiplier)
 static vec4 quat_from_axis_angle(vec3 axis, real radians)
 {
     real half_angle = radians * 0.5f;
-    real sin_half = (real)sin((double)half_angle);
-    real cos_half = (real)cos((double)half_angle);
+    real sin_half = real_sin(half_angle);
+    real cos_half = real_cos(half_angle);
     vec3 unit_axis = vec3_normalize(axis);
     return vec4_init_from_4(unit_axis.rotation.i * sin_half, unit_axis.rotation.j * sin_half, unit_axis.rotation.k * sin_half, cos_half);
 }
@@ -1845,8 +2347,8 @@ static vec4 quat_from_axis_angle(vec3 axis, real radians)
 static vec4 quat_to_axis_angle(vec4 rotation)
 {
     vec4 normalized = vec4_normalize(rotation);
-    real half_angle = (real)acos((double)normalized.rotation.w);
-    real sin_half = (real)sqrt((double)real_max(0.0f, 1.0f - (normalized.rotation.w * normalized.rotation.w)));
+    real half_angle = real_acos(normalized.rotation.w);
+    real sin_half = real_sqrt(real_max(0.0f, 1.0f - (normalized.rotation.w * normalized.rotation.w)));
 
     if (sin_half <= VECTORS_QUAT_EPSILON)
     {
@@ -1864,7 +2366,7 @@ static vec4 quat_to_axis_angle(vec4 rotation)
 static bool quat_is_normalized(vec4 rotation)
 {
     real magnitude_squared = vec4_dot(rotation, rotation);
-    return (real)fabs((double)(magnitude_squared - 1.0f)) <= VECTORS_QUAT_EPSILON;
+    return real_abs(magnitude_squared - 1.0f) <= VECTORS_QUAT_EPSILON;
 }
 
 /* Construct the shortest-arc quaternion rotating one vector onto another. */
@@ -1873,8 +2375,8 @@ static vec4 quat_between_vec3(vec3 from, vec3 to)
     vec3 from_normalized = vec3_normalize(from);
     vec3 to_normalized = vec3_normalize(to);
     real dot = vec3_dot(from_normalized, to_normalized);
-    vec3 axis;      /* declared at top */
-    vec4 rotation;  /* declared at top */
+    vec3 axis;
+    vec4 rotation;
 
     if (dot >= (1.0f - VECTORS_QUAT_EPSILON))
     {
@@ -1936,11 +2438,11 @@ static vec4 quat_slerp(vec4 src0, vec4 src1, real factor)
         return quat_nlerp(src0, end, factor);
     }
 
-    dot = (real)real_min(real_max(dot, -1.0f), 1.0f);
-    theta = (real)acos((double)dot);
-    sin_theta = (real)sin((double)theta);
-    scale0 = (real)sin((double)((1.0f - factor) * theta)) / sin_theta;
-    scale1 = (real)sin((double)(factor * theta)) / sin_theta;
+    dot = real_min(real_max(dot, -1.0f), 1.0f);
+    theta = real_acos(dot);
+    sin_theta = real_sin(theta);
+    scale0 = real_sin((1.0f - factor) * theta) / sin_theta;
+    scale1 = real_sin(factor * theta) / sin_theta;
     return vec4_add(vec4_mul_scalar(src0, scale0), vec4_mul_scalar(end, scale1));
 }
 
@@ -1948,7 +2450,7 @@ static vec4 quat_slerp(vec4 src0, vec4 src1, real factor)
 static vec3 quat_rotate_vec3(vec4 rotation, vec3 vector)
 {
     vec4 normalized = vec4_normalize(rotation);
-    vec3 qv = vec3_init_from_3(normalized.rotation.i, normalized.rotation.j, normalized.rotation.k);
+    vec3 qv = normalized.vec3;
     vec3 uv = vec3_cross(qv, vector);
     vec3 uuv = vec3_cross(qv, uv);
     vec3 rotated = vec3_add(vector, vec3_mul_scalar(vec3_add(vec3_mul_scalar(uv, normalized.rotation.w), uuv), 2.0f));
@@ -1958,13 +2460,9 @@ static vec3 quat_rotate_vec3(vec4 rotation, vec3 vector)
 /* Rotate a vec4 by a quaternion, preserving the incoming w component. */
 static vec4 quat_rotate_vec4(vec4 rotation, vec4 vector)
 {
-    vec3 vector_xyz = vec3_init_from_3(vector.position.x, vector.position.y, vector.position.z);
-    vec3 rotated_xyz = quat_rotate_vec3(rotation, vector_xyz);
     vec4 rotated;
-    rotated.position.x = rotated_xyz.position.x;
-    rotated.position.y = rotated_xyz.position.y;
-    rotated.position.z = rotated_xyz.position.z;
-    rotated.position.w = vector.position.w;
+	rotated.vec3 = quat_rotate_vec3(rotation, vector.vec3);
+    rotated.rotation.w = vector.rotation.w;
     return rotated;
 }
 
@@ -1972,5 +2470,9 @@ static vec4 quat_rotate_vec4(vec4 rotation, vec4 vector)
 #undef CONCAT_
 #undef CONCAT
 #undef STATIC_ASSERT
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* VECTORS_H */
